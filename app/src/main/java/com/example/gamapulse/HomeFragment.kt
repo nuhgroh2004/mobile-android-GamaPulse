@@ -1,7 +1,9 @@
+// HomeFragment.kt
 package com.example.gamapulse
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -142,6 +144,10 @@ class HomeFragment : Fragment() {
             // Save the mood and rating here
             saveMoodRating(moodType, currentValue)
             dialog.dismiss()
+
+            // Navigate to Notes activity
+            val intent = Intent(requireContext(), Notes::class.java)
+            startActivity(intent)
         }
 
         dialog.show()
