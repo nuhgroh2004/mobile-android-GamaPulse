@@ -7,6 +7,10 @@ android {
     namespace = "com.example.gamapulse"
     compileSdk = 35
 
+    buildFeatures {
+        viewBinding = true
+    }
+
     defaultConfig {
         applicationId = "com.example.gamapulse"
         minSdk = 24
