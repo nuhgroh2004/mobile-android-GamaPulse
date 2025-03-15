@@ -13,17 +13,20 @@
         android:theme="@style/Theme.GamaPulse"
         tools:targetApi="31">
         <activity
+            android:name=".FirstWindowActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".RegisterActivity"
             android:exported="false" />
         <activity
             android:name=".SparseScreenActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
+            android:exported="false"/>
 
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
         <activity
             android:name=".LoginActivity"
             android:exported="false" />
