@@ -18,9 +18,10 @@
         android:src="@drawable/character_image"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.4" />
+        app:layout_constraintVertical_bias="0.231" />
 
     <TextView
         android:id="@+id/textSlogan"
@@ -46,37 +47,41 @@
         app:layout_constraintTop_toBottomOf="@+id/textSlogan" />
 
 
-    <Button
-        android:id="@+id/btnNewUser"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="40dp"
-        android:layout_marginEnd="40dp"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/button_teal"
-        android:padding="16dp"
-        app:backgroundTint="#16A9B1"
-        android:text="CREATE AN ACCOUNT"
-        android:textColor="@android:color/white"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toTopOf="@+id/btnLogin"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
+    <!-- Login button -->
     <Button
         android:id="@+id/btnLogin"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="40dp"
         android:layout_marginEnd="40dp"
-        android:layout_marginBottom="35dp"
-        android:background="@drawable/button_teal"
-        android:padding="16dp"
+        android:layout_marginBottom="100dp"
+        android:background="@drawable/button_ripple_effect"
+        android:foreground="?attr/selectableItemBackground"
+        android:padding="8dp"
         app:backgroundTint="@color/white"
-        android:text="CREATE AN ACCOUNT"
+        android:text="LOGIN ACCOUNT"
         android:textColor="#16A9B1"
         android:textSize="16sp"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Create Account button -->
+    <Button
+        android:id="@+id/btnNewUser"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/button_ripple_effect"
+        android:foreground="?attr/selectableItemBackground"
+        android:padding="8dp"
+        app:backgroundTint="#16A9B1"
+        android:text="CREATE AN ACCOUNT"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        app:layout_constraintBottom_toTopOf="@+id/btnLogin"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
