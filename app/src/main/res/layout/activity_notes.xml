@@ -3,121 +3,167 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
-
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#F5F7FA"
     android:padding="16dp"
     tools:context=".Notes">
 
-    <!-- Date Label -->
-    <TextView
-        android:id="@+id/textViewTanggal"
-        android:layout_width="wrap_content"
+    <!-- Card Container -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="25dp"
-        android:text="Tanggal :"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <!-- Date Input -->
-    <EditText
-        android:id="@+id/editTextTanggal"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@android:drawable/editbox_background"
-        android:hint="01/02/2025"
-        android:inputType="date"
-        android:padding="12dp"
+        android:elevation="8dp"
+        app:cardCornerRadius="16dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewTanggal" />
+        app:layout_constraintTop_toTopOf="parent">
 
-    <!-- Time Label -->
-    <TextView
-        android:id="@+id/textViewJam"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Jam:"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/editTextTanggal" />
-
-    <!-- Time Input -->
-    <EditText
-        android:id="@+id/editTextJam"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@android:drawable/editbox_background"
-        android:hint="12:14"
-        android:inputType="time"
-        android:padding="12dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewJam" />
-
-    <!-- Notes Label -->
-    <TextView
-        android:id="@+id/textViewCatatan"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Catatan:"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/editTextJam" />
-
-    <!-- Notes Input -->
-    <EditText
-        android:id="@+id/editTextCatatan"
-        android:layout_width="0dp"
-        android:layout_height="160dp"
-        android:layout_marginTop="8dp"
-        android:background="@android:drawable/editbox_background"
-        android:gravity="top"
-        android:inputType="textMultiLine"
-        android:padding="8dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/textViewCatatan" />
-
-    <!-- Buttons Layout -->
-    <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginTop="24dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/editTextCatatan">
-
-        <!-- Back Button -->
-        <Button
-            android:id="@+id/buttonKembali"
-            android:layout_width="0dp"
+        <!-- Card Content -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:layout_weight="1"
-            android:background="#555555"
-            android:text="Kembali"
-            android:textColor="#FFFFFF" />
+            android:orientation="vertical">
 
-        <!-- Save Button -->
-        <Button
-            android:id="@+id/buttonSimpan"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:background="#00AAFF"
-            android:text="Simpan"
-            android:textColor="#FFFFFF" />
-    </LinearLayout>
+            <!-- Header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/notes_header_gradient"
+                android:padding="16dp"
+                android:text="Catatan Baru"
+                android:textAlignment="center"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <!-- Form Content -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Date Layout -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textViewTanggal"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Tanggal :"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/displayTextTanggal"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/notes_text_background"
+                        android:padding="12dp"
+                        android:text="01/02/2025"
+                        android:textColor="#0083B0"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <!-- Time Layout -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textViewJam"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Jam:"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/displayTextJam"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/notes_text_background"
+                        android:padding="12dp"
+                        android:text="12:14"
+                        android:textColor="#0083B0"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <!-- Notes Layout -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/textViewCatatan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Catatan:"
+                        android:textColor="#333333"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <EditText
+                        android:id="@+id/editTextCatatan"
+                        android:layout_width="match_parent"
+                        android:layout_height="180dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/notes_text_background"
+                        android:gravity="top"
+                        android:hint="Tulis catatan Anda di sini..."
+                        android:inputType="textMultiLine"
+                        android:padding="12dp"
+                        android:textColor="#333333"
+                        android:textSize="16sp" />
+                </LinearLayout>
+
+                <!-- Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btnKembali"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/notes_button_kembali"
+                        android:padding="12dp"
+                        app:backgroundTint="@null"
+                        android:text="Kembali"
+                        android:textColor="#555555"
+                        android:textSize="16sp" />
+
+                    <Button
+                        android:id="@+id/btnSimpan"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/notes_button_simpan"
+                        android:padding="12dp"
+                        android:text="Simpan"
+                        app:backgroundTint="@null"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

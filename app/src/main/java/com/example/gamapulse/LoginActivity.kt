@@ -30,39 +30,32 @@ class LoginActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        // Initialize views
+        // parameter view password icon
         etPassword = findViewById(R.id.etPassword)
         btnTogglePassword = findViewById(R.id.btnTogglePassword)
-
-        // Set initial state to password hidden
         btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
         btnTogglePassword.background = null
-        // Set up password visibility toggle
-        btnTogglePassword.setOnClickListener {
-            togglePasswordVisibility()
-        }
+        btnTogglePassword.setOnClickListener { togglePasswordVisibility() }
+        // parameter view password icon
+
         findViewById<Button>(R.id.btnLogin).foreground = getRippleDrawable(getColor(R.color.teal))
         setupButtonWithAnimation(findViewById(R.id.btnLogin), MainActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.tvSignUp), RegisterActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnBack), SparseScreenActivity::class.java)
     }
-    // Function to toggle password visibility
+    // Funsi view password
     private fun togglePasswordVisibility() {
         isPasswordVisible = !isPasswordVisible
-
         if (isPasswordVisible) {
-            // Show password
             etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
             btnTogglePassword.setImageResource(R.drawable.ic_visibility)
         } else {
-            // Hide password
             etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
             btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
         }
-
-        // Maintain cursor position
         etPassword.setSelection(etPassword.text.length)
     }
+    // Funsi view password
 
     // Fungsi untuk mengatur animasi tombol
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {

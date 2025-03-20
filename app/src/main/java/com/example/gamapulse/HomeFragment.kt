@@ -1,11 +1,12 @@
-// HomeFragment.kt
 package com.example.gamapulse
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -20,19 +21,18 @@ import androidx.fragment.app.Fragment
 
 class HomeFragment : Fragment() {
 
+    /* ----------------------------- Fragment Lifecycle Methods ----------------------------- */
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         val view = inflater.inflate(R.layout.fragment_home, container, false)
-
-        // Set up click listeners for all mood emojis
         setupMoodEmojis(view)
-
         return view
     }
+    /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
 
+    /* ----------------------------- Emoji Setup Methods ----------------------------- */
     private fun setupMoodEmojis(view: View) {
         // Find each emoji container by position in the LinearLayout
         val moodContainer = view.findViewById<LinearLayout>(R.id.mood_container)
@@ -70,34 +70,47 @@ class HomeFragment : Fragment() {
 
     private fun setupEmojiClickListener(emojiView: ImageView, moodType: String) {
         emojiView.setOnClickListener {
-            // Play animation when emoji is clicked
             animateEmoji(emojiView)
-
-            // Show rating popup for this mood
             showMoodRatingPopup(moodType)
         }
     }
+    /* ----------------------------- End Emoji Setup Methods ----------------------------- */
 
+    /* ----------------------------- Animation Methods ----------------------------- */
     private fun animateEmoji(view: View) {
-        // Create scale animations
         val scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.3f, 1f)
         val scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.3f, 1f)
-
-        // Create animator set
         val animatorSet = AnimatorSet()
         animatorSet.playTogether(scaleX, scaleY)
         animatorSet.duration = 500
         animatorSet.interpolator = OvershootInterpolator()
-
-        // Start animation
         animatorSet.start()
     }
 
+    private fun animateButtonAndExecute(view: View, action: () -> Unit) {
+        view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
+            view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
+            view.postDelayed({
+                action()
+            }, 150)
+        }.start()
+    }
+    /* ----------------------------- End Animation Methods ----------------------------- */
+
+    /* ----------------------------- UI Helper Methods ----------------------------- */
+    private fun getRippleDrawable(color: Int): RippleDrawable {
+        return RippleDrawable(
+            ColorStateList.valueOf(requireContext().getColor(R.color.ripple_color)),
+            null,
+            ColorDrawable(color)
+        )
+    }
+    /* ----------------------------- End UI Helper Methods ----------------------------- */
+
+    /* ----------------------------- Popup Dialog Methods ----------------------------- */
     private fun showMoodRatingPopup(moodType: String) {
         val inflater = LayoutInflater.from(context)
         val popupView = inflater.inflate(R.layout.popup_intensitas_mood, null)
-
-        // Find views in the popup
         val titleTextView = popupView.findViewById<TextView>(R.id.popup_title)
         val numberPickerValue = popupView.findViewById<TextView>(R.id.number_value)
         val increaseButton = popupView.findViewById<View>(R.id.increase_button)
@@ -105,58 +118,52 @@ class HomeFragment : Fragment() {
         val cancelButton = popupView.findViewById<Button>(R.id.cancel_button)
         val okButton = popupView.findViewById<Button>(R.id.ok_button)
 
-        // Set popup title based on mood type
         titleTextView.text = "Seberapa $moodType kamu?"
 
-        // Initialize counter
         var currentValue = 1
         numberPickerValue.text = currentValue.toString()
 
-        // Set click listeners for increase/decrease buttons
+        cancelButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
+        okButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
         increaseButton.setOnClickListener {
             if (currentValue < 5) {
                 currentValue++
                 numberPickerValue.text = currentValue.toString()
             }
         }
-
         decreaseButton.setOnClickListener {
             if (currentValue > 1) {
                 currentValue--
                 numberPickerValue.text = currentValue.toString()
             }
         }
-
-        // Create dialog
         val dialog = AlertDialog.Builder(requireContext())
             .setView(popupView)
             .create()
-
-        // Set transparent background to allow for rounded corners in layout
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
-        // Set button click listeners
         cancelButton.setOnClickListener {
-            dialog.dismiss()
+            animateButtonAndExecute(cancelButton) {
+                dialog.dismiss()
+            }
         }
-
         okButton.setOnClickListener {
-            // Save the mood and rating here
-            saveMoodRating(moodType, currentValue)
-            dialog.dismiss()
-
-            // Navigate to Notes activity
-            val intent = Intent(requireContext(), Notes::class.java)
-            startActivity(intent)
+            animateButtonAndExecute(okButton) {
+                saveMoodRating(moodType, currentValue)
+                dialog.dismiss()
+                val intent = Intent(requireContext(), Notes::class.java)
+                startActivity(intent)
+            }
         }
-
         dialog.show()
     }
+    /* ----------------------------- End Popup Dialog Methods ----------------------------- */
 
+    /* ----------------------------- Data Methods ----------------------------- */
     private fun saveMoodRating(moodType: String, rating: Int) {
         // Implement your logic to save the mood rating
         // This could be storing to SharedPreferences, a database, or sending to an API
         // For now, we'll just print to the console
         println("Mood: $moodType, Rating: $rating")
     }
+    /* ----------------------------- End Data Methods ----------------------------- */
 }
