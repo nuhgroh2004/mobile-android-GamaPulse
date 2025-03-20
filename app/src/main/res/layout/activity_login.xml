@@ -73,7 +73,7 @@
         android:layout_height="48dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="Toggle Password Visibility"
-        android:src="@drawable/ic_visibility"
+        android:src="@drawable/ic_visibility_off"
         app:tint="@color/light_blue"
         app:layout_constraintBottom_toBottomOf="@id/etPassword"
         app:layout_constraintEnd_toEndOf="@id/etPassword"
@@ -84,9 +84,8 @@
         android:id="@+id/btnLogin"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:background="@drawable/button_teal"
-        android:paddingVertical="16dp"
+        android:layout_marginTop="35dp"
+        android:paddingVertical="8dp"
         android:text="Log in"
         app:backgroundTint="@color/teal"
         android:textAllCaps="false"
@@ -94,6 +93,8 @@
         android:textSize="18sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
+        android:background="@drawable/button_ripple_effect"
+        android:foreground="?attr/selectableItemBackground"
         app:layout_constraintTop_toBottomOf="@id/etPassword" />
 
     <!-- Sign Up Text -->
