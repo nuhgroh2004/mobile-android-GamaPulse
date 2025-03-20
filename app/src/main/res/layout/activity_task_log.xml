@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp"
+    tools:context=".TaskLogActivity">
+
+    <!-- Back button -->
+    <ImageButton
+        android:id="@+id/btnBack"
+        android:layout_width="48dp"
+        android:layout_marginStart="34dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Back"
+        android:src="@drawable/baseline_arrow_back_24"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/tvTaskLogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="72dp"
+        android:text="Task Log"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/btnCreateTarget"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="34dp"
+        android:layout_marginEnd="34dp"
+        android:text="Buat Target"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTaskLogTitle"
+        android:background="@drawable/button_ripple_effect"
+        app:backgroundTint="@color/blue"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/targetInputContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTaskLogTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:id="@+id/timePickerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <!-- Hours Picker -->
+            <NumberPicker
+                android:id="@+id/hoursPicker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=":"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <!-- Minutes Picker -->
+            <NumberPicker
+                android:id="@+id/minutesPicker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=":"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <!-- Seconds Picker -->
+            <NumberPicker
+                android:id="@+id/secondsPicker"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnAddTarget"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tambah Target"
+            android:background="@drawable/button_ripple_effect"
+            android:layout_marginStart="34dp"
+            android:layout_marginEnd="34dp"
+            app:backgroundTint="@color/green"
+            android:layout_marginTop="16dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Timer Display -->
+
+    <!-- Target Display -->
+    <TextView
+        android:id="@+id/tvTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="34dp"
+        android:layout_marginEnd="34dp"
+        android:layout_marginTop="76dp"
+        android:fontFamily="monospace"
+        android:text="00 : 00 : 00"
+        android:textSize="43sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/targetInputContainer" />
+
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cvCurrentTarget"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:visibility="gone"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:contentPadding="16dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTimer"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="34dp"
+        android:layout_marginEnd="34dp"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Target Saat Ini:"
+                android:textStyle="bold"
+                android:textSize="16sp" />
+            <TextView
+                android:id="@+id/tvCurrentTargetTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="18sp"
+                android:text="Target: 00:00:00" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Timer Control Buttons -->
+    <LinearLayout
+        android:id="@+id/llTimerControls"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="32dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/cvCurrentTarget"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="34dp"
+        android:layout_marginEnd="34dp"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnStartPause"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/button_ripple_effect"
+            android:text="Mulai"
+            android:textSize="16sp"
+            android:paddingVertical="12dp"
+            app:cornerRadius="8dp"
+            app:backgroundTint="@color/green" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFinish"
+            android:background="@drawable/button_ripple_effect"
+            app:backgroundTint="@color/blue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Selesai"
+            android:textSize="16sp"
+            android:paddingVertical="12dp"
+            app:cornerRadius="8dp"
+            android:backgroundTint="@color/blue" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -28,6 +28,7 @@ class HomeFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         setupMoodEmojis(view)
+        setupTaskLogButton(view)
         return view
     }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
@@ -166,4 +167,16 @@ class HomeFragment : Fragment() {
         println("Mood: $moodType, Rating: $rating")
     }
     /* ----------------------------- End Data Methods ----------------------------- */
+
+    /* ----------------------------- Navigation Methods ----------------------------- */
+    private fun setupTaskLogButton(view: View) {
+        view.findViewById<View>(R.id.btnTaksLog)?.setOnClickListener {
+            // Navigate to TaskLogActivity with animation
+            animateButtonAndExecute(it) {
+                val intent = Intent(requireContext(), TaskLogActivity::class.java)
+                startActivity(intent)
+            }
+        }
+    }
+    /* ----------------------------- End Navigation Methods ----------------------------- */
 }
