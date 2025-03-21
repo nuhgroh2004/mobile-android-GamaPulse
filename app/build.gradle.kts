@@ -52,4 +52,5 @@ dependencies {
 
     implementation(libs.google.material)
     implementation("androidx.cardview:cardview:1.0.0")
+    implementation ("com.github.f0ris.sweetalert:library:1.5.6")
 }

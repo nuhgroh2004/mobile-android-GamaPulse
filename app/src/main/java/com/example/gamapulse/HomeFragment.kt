@@ -168,7 +168,7 @@ class HomeFragment : Fragment() {
     }
     /* ----------------------------- End Data Methods ----------------------------- */
 
-    /* ----------------------------- Navigation Methods ----------------------------- */
+    /* ----------------------------- Navigation ----------------------------- */
     private fun setupTaskLogButton(view: View) {
         view.findViewById<View>(R.id.btnTaksLog)?.setOnClickListener {
             // Navigate to TaskLogActivity with animation
@@ -177,6 +177,15 @@ class HomeFragment : Fragment() {
                 startActivity(intent)
             }
         }
+        view.findViewById<View>(R.id.btnViewCalendar)?.setOnClickListener {
+            // Navigate to TaskLogActivity with animation
+            animateButtonAndExecute(it) {
+                val intent = Intent(requireContext(), ViewCalendarActivity::class.java)
+                startActivity(intent)
+            }
+        }
     }
-    /* ----------------------------- End Navigation Methods ----------------------------- */
+    /* ----------------------------- End Navigation ----------------------------- */
+
+
 }
