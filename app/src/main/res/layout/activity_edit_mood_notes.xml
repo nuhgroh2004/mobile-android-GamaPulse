@@ -7,4 +7,152 @@
     android:layout_height="match_parent"
     tools:context=".EditMoodNotesActivity">
 
+    <CalendarView
+        android:id="@+id/calendarIcon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/dateTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:drawableStart="@android:drawable/ic_menu_my_calendar"
+        android:drawablePadding="4dp"
+        android:text="01/02/2025"
+        android:textSize="16sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/timeTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:drawableStart="@android:drawable/ic_menu_recent_history"
+        android:drawablePadding="4dp"
+        android:text="12:14"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/moodTitleTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="SAYA MERASA MARAH"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dateTextView" />
+
+    <ImageView
+        android:id="@+id/selectedMoodImageView"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginTop="16dp"
+        android:src="@drawable/icon_mood_bahagia"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/moodTitleTextView" />
+
+    <LinearLayout
+        android:id="@+id/moodSelectionLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/selectedMoodImageView">
+
+        <ImageView
+            android:id="@+id/angryMoodImageView"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:src="@drawable/icon_mood_marah"
+            android:tag="Marah" />
+
+        <ImageView
+            android:id="@+id/sadMoodImageView"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:src="@drawable/icon_mood_sedih"
+            android:tag="Sedih" />
+
+        <ImageView
+            android:id="@+id/happyMoodImageView"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:src="@drawable/icon_mood_bahagia"
+            android:tag="Bahagia" />
+
+        <ImageView
+            android:id="@+id/calmMoodImageView"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_margin="8dp"
+            android:src="@drawable/icon_mood_biasa"
+            android:tag="Biasa" />
+    </LinearLayout>
+
+    <EditText
+        android:id="@+id/moodNotesEditText"
+        android:layout_width="match_parent"
+        android:layout_height="150dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="16dp"
+        android:background="@android:drawable/edit_text"
+        android:gravity="top"
+        android:hint="hari ini sangat menyenangkan"
+        android:padding="12dp"
+        android:textSize="16sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/moodSelectionLayout" />
+
+    <Button
+        android:id="@+id/cancelButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#808080"
+        android:text="Kembali"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <Button
+        android:id="@+id/saveButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#00BFFF"
+        android:text="Simpan"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <Button
+        android:id="@+id/editButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:backgroundTint="#00BFFF"
+        android:text="Edit"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
