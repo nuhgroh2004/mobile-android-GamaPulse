@@ -244,7 +244,7 @@
         <Space
             android:layout_width="match_parent"
             app:layout_constraintTop_toBottomOf="@+id/rightDivider"
-            android:layout_height="150dp" />
+            android:layout_height="38dp" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

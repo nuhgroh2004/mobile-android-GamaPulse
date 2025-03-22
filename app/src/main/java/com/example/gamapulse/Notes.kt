@@ -1,4 +1,3 @@
-// Notes.kt
 package com.example.gamapulse
 
 import android.content.Intent

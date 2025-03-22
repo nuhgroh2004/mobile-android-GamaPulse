@@ -86,12 +86,12 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
                 android:layout_weight="1"
-                android:backgroundTint="#FFFFFF"
+                android:backgroundTint="#B6B6B6"
                 app:backgroundTint="@null"
                 android:background="@drawable/button_ripple_effect"
                 android:paddingVertical="12dp"
                 android:text="Kembali"
-                android:textColor="#333333"
+                android:textColor="#ffffff"
                 android:textSize="16sp" />
 
             <Button

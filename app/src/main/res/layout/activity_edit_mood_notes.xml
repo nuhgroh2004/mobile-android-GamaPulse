@@ -55,8 +55,8 @@
 
     <ImageView
         android:id="@+id/selectedMoodImageView"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
         android:layout_marginTop="16dp"
         android:src="@drawable/icon_mood_bahagia"
         app:layout_constraintEnd_toEndOf="parent"
@@ -75,32 +75,32 @@
 
         <ImageView
             android:id="@+id/angryMoodImageView"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_margin="8dp"
             android:src="@drawable/icon_mood_marah"
             android:tag="Marah" />
 
         <ImageView
             android:id="@+id/sadMoodImageView"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_margin="8dp"
             android:src="@drawable/icon_mood_sedih"
             android:tag="Sedih" />
 
         <ImageView
             android:id="@+id/happyMoodImageView"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_margin="8dp"
             android:src="@drawable/icon_mood_bahagia"
             android:tag="Bahagia" />
 
         <ImageView
             android:id="@+id/calmMoodImageView"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="70dp"
+            android:layout_height="70dp"
             android:layout_margin="8dp"
             android:src="@drawable/icon_mood_biasa"
             android:tag="Biasa" />
@@ -109,7 +109,7 @@
     <EditText
         android:id="@+id/moodNotesEditText"
         android:layout_width="match_parent"
-        android:layout_height="150dp"
+        android:layout_height="250dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="16dp"
@@ -124,35 +124,51 @@
 
     <Button
         android:id="@+id/cancelButton"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#808080"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="80dp"
+        app:backgroundTint="#808080"
+        android:background="@drawable/button_ripple_effect"
         android:text="Kembali"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/guideline" />
 
     <Button
         android:id="@+id/saveButton"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#00BFFF"
+        android:layout_marginBottom="80dp"
+        app:backgroundTint="#00BFFF"
+        android:background="@drawable/button_ripple_effect"
         android:text="Simpan"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="parent" />
 
     <Button
         android:id="@+id/editButton"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#00BFFF"
+        android:layout_marginBottom="80dp"
+        app:backgroundTint="#00BFFF"
+        android:background="@drawable/button_ripple_effect"
         android:text="Edit"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline"
         app:layout_constraintEnd_toEndOf="parent" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -15,15 +15,12 @@ class SparseScreenActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_sparse_screen)
-        // Setup animasi
         findViewById<Button>(R.id.btnLogin).foreground = getRippleDrawable(getColor(R.color.teal))
         findViewById<Button>(R.id.btnNewUser).foreground = getRippleDrawable(android.R.color.white)
-        // menngarhkan tombol
         setupButtonWithAnimation(findViewById(R.id.btnLogin), LoginActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnNewUser), RegisterActivity::class.java)
     }
 
-    // Fungsi untuk mengatur animasi tombol
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {
             it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
@@ -42,7 +39,4 @@ class SparseScreenActivity : AppCompatActivity() {
             ColorDrawable(color)
         )
     }
-    // Fungsi untuk mengatur animasi tombol
-
-
 }
