@@ -258,7 +258,7 @@
                 android:backgroundTint="@color/green"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:text="Simpan"
+                android:text="Simpan Perubahan"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 android:visibility="gone"

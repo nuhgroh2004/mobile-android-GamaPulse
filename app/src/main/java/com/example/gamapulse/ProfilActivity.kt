@@ -1,10 +1,14 @@
 package com.example.gamapulse
 
 import android.app.DatePickerDialog
+import android.graphics.Color
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
+import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.gamapulse.databinding.ActivityProfilBinding
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -17,6 +21,10 @@ class ProfilActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.statusBarColor = Color.WHITE
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = true
+        }
         binding = ActivityProfilBinding.inflate(layoutInflater)
         setContentView(binding.root)
         loadUserData()
@@ -40,7 +48,8 @@ class ProfilActivity : AppCompatActivity() {
             it.animate().alpha(0.5f).setDuration(100).withEndAction {
                 it.animate().alpha(1f).setDuration(100).start()
                 finish()
-            }.start() }
+            }.start()
+        }
     }
 
     private fun setupEditButton() {
@@ -60,11 +69,77 @@ class ProfilActivity : AppCompatActivity() {
         }
 
         binding.btnSave.setOnClickListener {
-            saveUserData()
-            isEditMode = false
-            binding.btnUpdateProfile.text = "Update Profile"
-            binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
-            enableEditMode(false)
+            showSaveConfirmation()
+        }
+    }
+
+    private fun showSaveConfirmation() {
+        val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
+            .setTitleText("Konfirmasi")
+            .setContentText("Apakah Anda yakin ingin menyimpan perubahan profil?")
+            .setCancelText("Batal")
+            .setConfirmText("Simpan")
+            .showCancelButton(true)
+            .setConfirmClickListener { sDialog ->
+                saveUserData()
+                sDialog.dismissWithAnimation()
+
+                val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
+                    .setTitleText("Berhasil!")
+                    .setContentText("Profil berhasil diperbarui")
+                    .setConfirmClickListener { it ->
+                        it.dismissWithAnimation()
+                        isEditMode = false
+                        binding.btnUpdateProfile.text = "Update Profile"
+                        binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
+                        enableEditMode(false)
+                    }
+
+                successDialog.show()
+                styleConfirmButton(successDialog)
+            }
+            .setCancelClickListener { sDialog ->
+                sDialog.dismissWithAnimation()
+            }
+
+        dialog.show()
+        styleAlertButtons(dialog)
+    }
+
+    private fun styleAlertButtons(dialog: SweetAlertDialog) {
+        val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
+        val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
+
+        cancelButton.apply {
+            background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+
+        confirmButton.apply {
+            background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+    }
+
+    private fun styleConfirmButton(dialog: SweetAlertDialog) {
+        dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
+            background = resources.getDrawable(R.drawable.allert_button_ok, theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
         }
     }
 
