@@ -29,6 +29,7 @@ class HomeFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         setupMoodEmojis(view)
         setupTaskLogButton(view)
+        setupProfileButton(view)
         return view
     }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
@@ -186,6 +187,19 @@ class HomeFragment : Fragment() {
         }
     }
     /* ----------------------------- End Navigation ----------------------------- */
+
+    /* ----------------------------- Profil Navigation ----------------------------- */
+    private fun setupProfileButton(view: View) {
+        val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
+        profileButton.setOnClickListener {
+            animateButtonAndExecute(it) {
+                val intent = Intent(requireContext(), ProfilActivity::class.java)
+                startActivity(intent)
+            }
+        }
+    }
+    /* ----------------------------- Profil Navigation ----------------------------- */
+
 
 
 }
