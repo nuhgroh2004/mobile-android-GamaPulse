@@ -6,7 +6,6 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
 import android.view.View
-import android.widget.Button
 import androidx.activity.enableEdgeToEdge
 import android.graphics.Color
 import android.util.TypedValue
@@ -18,30 +17,28 @@ import java.util.Date
 import java.util.Locale
 
 class Notes : AppCompatActivity() {
-
     private lateinit var binding: ActivityNotesBinding
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         binding = ActivityNotesBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // Set foreground ripple effects
         binding.btnKembali.foreground = getRippleDrawable(getColor(R.color.teal))
         binding.btnSimpan.foreground = getRippleDrawable(getColor(R.color.white))
-
-        // Integration of animation with regular click handling
         binding.btnKembali.setOnClickListener {
             animateButtonAndExecute(it) {
-                // Just finish this activity to return to previous screen
+                val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+                with(sharedPref.edit()) {
+                    putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
+                    putBoolean("SHOULD_SHOW_MOOD_SELECTION", true)
+                    apply()
+                }
                 finish()
             }
         }
 
         binding.btnSimpan.setOnClickListener {
             animateButtonAndExecute(it) {
-                // Show confirmation dialog before saving
                 val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
                     .setTitleText("Konfirmasi")
                     .setContentText("Apakah Anda yakin ingin menyimpan catatan ini?")
@@ -49,39 +46,32 @@ class Notes : AppCompatActivity() {
                     .setConfirmText("Simpan")
                     .showCancelButton(true)
                     .setConfirmClickListener { sDialog ->
-                        // Save note data logic here
                         val catatan = binding.editTextCatatan.text.toString()
-
-                        // Get the mood data from the intent extras
                         val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
                         val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
-
-                        // Store the data in SharedPreferences
                         val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
                         val currentDate = getCurrentDate()
-
                         with(sharedPref.edit()) {
                             putString("LAST_MOOD_TYPE", moodType)
                             putInt("LAST_MOOD_INTENSITY", moodIntensity)
                             putString("LAST_MOOD_NOTE", catatan)
-                            putString("LAST_MOOD_DATE", currentDate)  // Save the current date
+                            putString("LAST_MOOD_DATE", currentDate)
                             apply()
                         }
-
                         sDialog.dismissWithAnimation()
-
-                        // Show success dialog
                         val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
                             .setTitleText("Berhasil!")
                             .setContentText("Catatan berhasil disimpan")
                             .setConfirmClickListener { it ->
                                 it.dismissWithAnimation()
-                                finish() // Return to previous screen
+                                val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+                                with(sharedPref.edit()) {
+                                    putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
+                                    apply()
+                                }
+                                finish()
                             }
-
                         successDialog.show()
-
-                        // Apply styling after showing the dialog
                         successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
                             background = resources.getDrawable(R.drawable.allert_button_ok, theme)
                             setTextColor(Color.WHITE)
@@ -95,13 +85,9 @@ class Notes : AppCompatActivity() {
                     .setCancelClickListener { sDialog ->
                         sDialog.dismissWithAnimation()
                     }
-
                 dialog.show()
-
-                // Apply styling to the buttons
                 val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
                 val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-
                 cancelButton.apply {
                     background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
                     setTextColor(Color.WHITE)
@@ -111,7 +97,6 @@ class Notes : AppCompatActivity() {
                     ).toInt()
                     backgroundTintList = null
                 }
-
                 confirmButton.apply {
                     background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
                     setTextColor(Color.WHITE)
@@ -123,6 +108,16 @@ class Notes : AppCompatActivity() {
                 }
             }
         }
+    }
+    @Override
+    override fun onBackPressed() {
+        // When user manually presses back button, clear temporary navigation flag
+        val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+        with(sharedPref.edit()) {
+            putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
+            apply()
+        }
+        super.onBackPressed()
     }
 
     private fun getCurrentDate(): String {
