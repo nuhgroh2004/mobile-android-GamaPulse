@@ -88,11 +88,11 @@ class NotificationAdapter(
 
         when (holder) {
             is InboxViewHolder -> {
-                holder.senderTextView.text = notification.sender
+                holder.senderTextView.text = notification.message
                 holder.emailTextView.text = notification.email
             }
             is HistoryViewHolder -> {
-                holder.senderTextView.text = notification.sender
+                holder.senderTextView.text = notification.message
                 holder.emailTextView.text = notification.email
 
                 // Set status text and color

@@ -1,7 +1,10 @@
 package com.example.gamapulse
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +13,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import cn.pedant.SweetAlert.SweetAlertDialog
 
 class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionListener {
 
@@ -45,7 +49,6 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         loadDummyData()
     }
 
-    /* ----------------------------- Profile Navigation ----------------------------- */
     private fun setupProfileButton(view: View) {
         val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
         profileButton.setOnClickListener {
@@ -57,6 +60,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     }
 
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
+        val originalElevation = view.elevation
+        view.elevation = 0f
+
         view.animate()
             .scaleX(1.1f)
             .scaleY(1.1f)
@@ -66,12 +72,14 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     .scaleX(1.0f)
                     .scaleY(1.0f)
                     .setDuration(100)
-                    .withEndAction { action() }
+                    .withEndAction {
+                        view.elevation = originalElevation
+                        action()
+                    }
                     .start()
             }
             .start()
     }
-    /* ----------------------------- End Profile Navigation ----------------------------- */
 
     private fun setupTabs() {
         tabKotakMasuk.setOnClickListener {
@@ -106,60 +114,190 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        inboxAdapter = NotificationAdapter(inboxNotifications, this, true)
-        historyAdapter = NotificationAdapter(historyNotifications, this, false)
+        inboxAdapter = NotificationAdapter(inboxNotifications, object : NotificationAdapter.NotificationActionListener {
+            override fun onAllowClick(notification: NotificationItem) {
+                showConfirmationDialog(
+                    "Konfirmasi Izinkan",
+                    "Apakah Anda yakin ingin mengizinkan ${notification.sender} melihat laporan Anda?",
+                    "Izinkan",
+                    SweetAlertDialog.SUCCESS_TYPE
+                ) {
+                    processAllowNotification(notification)
+                }
+            }
 
-        // Set initial adapter
+            override fun onRejectClick(notification: NotificationItem) {
+                showConfirmationDialog(
+                    "Konfirmasi Tolak",
+                    "Apakah Anda yakin ingin menolak permintaan dari ${notification.sender}?",
+                    "Tolak",
+                    SweetAlertDialog.WARNING_TYPE
+                ) {
+                    processRejectNotification(notification)
+                }
+            }
+
+            override fun onDeleteClick(notification: NotificationItem) {
+                showConfirmationDialog(
+                    "Konfirmasi Hapus",
+                    "Apakah Anda yakin ingin menghapus notifikasi ini?",
+                    "Hapus",
+                    SweetAlertDialog.WARNING_TYPE
+                ) {
+                    processDeleteNotification(notification)
+                }
+            }
+        }, true)
+
+        historyAdapter = NotificationAdapter(historyNotifications, this, false)
         recyclerView.adapter = inboxAdapter
     }
 
-    private fun loadDummyData() {
-        // Add inbox notifications
-        inboxNotifications.add(NotificationItem(1, "Saudara Budi ingin melihat laporan anda", "Budi@gmail.com"))
-        inboxNotifications.add(NotificationItem(2, "Saudara Ahmad ingin melihat laporan anda", "Ahmad@gmail.com"))
-        inboxNotifications.add(NotificationItem(3, "Saudara Dewi ingin melihat laporan anda", "Dewi@gmail.com"))
-        inboxAdapter.updateNotifications(inboxNotifications)
+    private fun showConfirmationDialog(
+        title: String,
+        message: String,
+        confirmText: String,
+        alertType: Int,
+        onConfirm: () -> Unit
+    ) {
+        val dialog = SweetAlertDialog(requireContext(), alertType)
+            .setTitleText(title)
+            .setContentText(message)
+            .setCancelText("Batal")
+            .setConfirmText(confirmText)
+            .showCancelButton(true)
+            .setConfirmClickListener { sDialog ->
+                sDialog.dismissWithAnimation()
+                onConfirm()
+            }
+            .setCancelClickListener { sDialog ->
+                sDialog.dismissWithAnimation()
+            }
 
-        // Add history notifications
-        historyNotifications.add(NotificationItem(4, "Saudara Rini ingin melihat laporan anda", "Rini@gmail.com", NotificationStatus.ALLOWED))
-        historyNotifications.add(NotificationItem(5, "Saudara Joko ingin melihat laporan anda", "Joko@gmail.com", NotificationStatus.REJECTED))
-        historyAdapter.updateNotifications(historyNotifications)
+        dialog.show()
+
+        val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
+        val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
+
+        cancelButton.apply {
+            background = resources.getDrawable(R.drawable.allert_button_cancel, requireActivity().theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+
+        confirmButton.apply {
+            background = resources.getDrawable(R.drawable.allert_button_confirm, requireActivity().theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
     }
 
-    override fun onAllowClick(notification: NotificationItem) {
-        // Remove from inbox
+    private fun showSuccessDialog(message: String) {
+        val successDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.SUCCESS_TYPE)
+            .setTitleText("Berhasil!")
+            .setContentText(message)
+            .setConfirmText("OK")
+
+        successDialog.show()
+
+        successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
+            background = resources.getDrawable(R.drawable.allert_button_ok, requireActivity().theme)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+    }
+
+    private fun processAllowNotification(notification: NotificationItem) {
         val index = inboxNotifications.indexOfFirst { it.id == notification.id }
         if (index != -1) {
             inboxNotifications.removeAt(index)
             inboxAdapter.updateNotifications(inboxNotifications)
 
-            // Add to history with ALLOWED status
             val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
             historyNotifications.add(0, updatedNotification)
             historyAdapter.updateNotifications(historyNotifications)
+
+            showSuccessDialog("Permintaan telah diizinkan")
         }
     }
 
-    override fun onRejectClick(notification: NotificationItem) {
-        // Remove from inbox
+    private fun processRejectNotification(notification: NotificationItem) {
         val index = inboxNotifications.indexOfFirst { it.id == notification.id }
         if (index != -1) {
             inboxNotifications.removeAt(index)
             inboxAdapter.updateNotifications(inboxNotifications)
 
-            // Add to history with REJECTED status
             val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
             historyNotifications.add(0, updatedNotification)
             historyAdapter.updateNotifications(historyNotifications)
+
+            showSuccessDialog("Permintaan telah ditolak")
         }
     }
 
-    override fun onDeleteClick(notification: NotificationItem) {
-        // Only delete from history
+    private fun processDeleteNotification(notification: NotificationItem) {
         val index = historyNotifications.indexOfFirst { it.id == notification.id }
         if (index != -1) {
             historyNotifications.removeAt(index)
             historyAdapter.updateNotifications(historyNotifications)
+
+            showSuccessDialog("Notifikasi telah dihapus")
+        }
+    }
+
+    private fun loadDummyData() {
+        inboxNotifications.add(NotificationItem(1, "Budi", "Saudara Budi ingin melihat laporan anda", "Budi@gmail.com"))
+        inboxNotifications.add(NotificationItem(2, "Ahmad", "Saudara Ahmad ingin melihat laporan anda", "Ahmad@gmail.com"))
+        inboxNotifications.add(NotificationItem(3, "Dewi", "Saudara Dewi ingin melihat laporan anda", "Dewi@gmail.com"))
+        inboxAdapter.updateNotifications(inboxNotifications)
+
+        historyNotifications.add(NotificationItem(4, "Rini", "Saudara Rini ingin melihat laporan anda", "Rini@gmail.com", NotificationStatus.ALLOWED))
+        historyNotifications.add(NotificationItem(5, "Joko", "Saudara Joko ingin melihat laporan anda", "Joko@gmail.com", NotificationStatus.REJECTED))
+        historyAdapter.updateNotifications(historyNotifications)
+    }
+
+    override fun onAllowClick(notification: NotificationItem) {
+        showConfirmationDialog(
+            "Konfirmasi Izinkan",
+            "Apakah Anda yakin ingin mengizinkan ${notification.sender} melihat laporan Anda?",
+            "Izinkan",
+            SweetAlertDialog.SUCCESS_TYPE
+        ) {
+            processAllowNotification(notification)
+        }
+    }
+
+    override fun onRejectClick(notification: NotificationItem) {
+        showConfirmationDialog(
+            "Konfirmasi Tolak",
+            "Apakah Anda yakin ingin menolak permintaan dari ${notification.sender}?",
+            "Tolak",
+            SweetAlertDialog.WARNING_TYPE
+        ) {
+            processRejectNotification(notification)
+        }
+    }
+
+    override fun onDeleteClick(notification: NotificationItem) {
+        showConfirmationDialog(
+            "Konfirmasi Hapus",
+            "Apakah Anda yakin ingin menghapus notifikasi ini?",
+            "Hapus",
+            SweetAlertDialog.WARNING_TYPE
+        ) {
+            processDeleteNotification(notification)
         }
     }
 }
