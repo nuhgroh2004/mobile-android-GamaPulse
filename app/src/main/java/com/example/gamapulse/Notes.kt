@@ -10,6 +10,9 @@ import android.widget.Button
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import com.example.gamapulse.databinding.ActivityNotesBinding
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class Notes : AppCompatActivity() {
 
@@ -38,8 +41,21 @@ class Notes : AppCompatActivity() {
                 // Save note data logic here
                 val catatan = binding.editTextCatatan.text.toString()
 
-                // Implement saving logic here
-                // For example, store in a database
+                // Get the mood data from the intent extras
+                val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
+                val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
+
+                // Store the data in SharedPreferences
+                val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+                val currentDate = getCurrentDate()
+
+                with(sharedPref.edit()) {
+                    putString("LAST_MOOD_TYPE", moodType)
+                    putInt("LAST_MOOD_INTENSITY", moodIntensity)
+                    putString("LAST_MOOD_NOTE", catatan)
+                    putString("LAST_MOOD_DATE", currentDate)  // Save the current date
+                    apply()
+                }
 
                 // Return to previous screen
                 finish()
@@ -47,7 +63,12 @@ class Notes : AppCompatActivity() {
         }
     }
 
-    // Fungsi untuk animasi tombol dan eksekusi aksi binding
+    private fun getCurrentDate(): String {
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        return dateFormat.format(Date())
+    }
+
+    // Function for button animation and action execution
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
         view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
             view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
@@ -56,9 +77,8 @@ class Notes : AppCompatActivity() {
             }, 150)
         }.start()
     }
-    // Fungsi untuk animasi tombol dan eksekusi aksi binding
 
-    // Fungsi untuk animasi tombol
+    // Function for button animation
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {
             it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
@@ -70,6 +90,7 @@ class Notes : AppCompatActivity() {
             }.start()
         }
     }
+
     private fun getRippleDrawable(color: Int): RippleDrawable {
         return RippleDrawable(
             ColorStateList.valueOf(getColor(R.color.ripple_color)),
@@ -77,5 +98,4 @@ class Notes : AppCompatActivity() {
             ColorDrawable(color)
         )
     }
-    // Fungsi untuk animasi tombol
 }

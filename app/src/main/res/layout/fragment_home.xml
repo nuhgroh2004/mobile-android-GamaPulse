@@ -184,6 +184,60 @@
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <!-- Current Mood Display -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/current_mood_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="#D6F5D6"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="4dp">
+
+                <LinearLayout
+                    android:id="@+id/current_mood_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:id="@+id/current_mood_emoji"
+                        android:layout_width="80dp"
+                        android:layout_height="80dp"
+                        android:padding="8dp"
+                        android:src="@drawable/icon_mood_biasa" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/current_mood_text"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Saya merasa biasa dengan intensitas 1 pada hari ini."
+                            android:textColor="#333333"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/current_mood_note"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text=""
+                            android:textColor="#666666"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
             <!-- Lorem Ipsum Card -->
             <androidx.cardview.widget.CardView
                 android:layout_width="match_parent"
@@ -291,6 +345,16 @@
                 </RelativeLayout>
             </androidx.cardview.widget.CardView>
 
+            <Button
+                android:id="@+id/dev_refresh_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="8dp"
+                android:text="Dev Refresh"
+                android:backgroundTint="#E91E63"
+                android:textColor="@color/black"
+                android:textSize="12sp" />
             <!-- Add a bottom padding space to ensure everything is visible when scrolled -->
             <Space
                 android:layout_width="match_parent"

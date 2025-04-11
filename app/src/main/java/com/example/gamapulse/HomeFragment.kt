@@ -17,9 +17,15 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import cn.pedant.SweetAlert.BuildConfig
 
 class HomeFragment : Fragment() {
+
+    private var moodSelectionContainer: LinearLayout? = null
+    private var moodParentContainer: LinearLayout? = null
+    private var devRefreshButton: Button? = null
 
     /* ----------------------------- Fragment Lifecycle Methods ----------------------------- */
     override fun onCreateView(
@@ -27,12 +33,83 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
+
+        // Get references to views
+        moodParentContainer = view.findViewById<LinearLayout>(R.id.mood_container)?.parent as? LinearLayout
+        moodSelectionContainer = view.findViewById(R.id.mood_container)
+        devRefreshButton = view.findViewById(R.id.dev_refresh_button)
+
+        view.findViewById<View>(R.id.current_mood_card).visibility = View.GONE
+
         setupMoodEmojis(view)
         setupTaskLogButton(view)
         setupProfileButton(view)
+        setupDevRefreshButton()
+        checkMoodSelectionStatus()
+        updateMoodDisplay(view)
+
         return view
     }
+
+    override fun onResume() {
+        super.onResume()
+        view?.let {
+            checkMoodSelectionStatus()
+            updateMoodDisplay(it)
+        }
+    }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
+
+    /* ----------------------------- Developer Mode Methods ----------------------------- */
+    private fun setupDevRefreshButton() {
+        // Make developer button visible in debug builds
+        if (BuildConfig.DEBUG) {
+            devRefreshButton?.visibility = View.VISIBLE
+        }
+
+        devRefreshButton?.setOnClickListener {
+            animateButtonAndExecute(it) {
+                // Clear the last mood selection date
+                val sharedPref = requireActivity().getSharedPreferences("MoodPrefs", AppCompatActivity.MODE_PRIVATE)
+                with(sharedPref.edit()) {
+                    remove("LAST_MOOD_DATE")
+                    remove("LAST_MOOD_TYPE")
+                    remove("LAST_MOOD_INTENSITY")
+                    remove("LAST_MOOD_NOTE")
+                    apply()
+                }
+
+                checkMoodSelectionStatus()
+                updateMoodDisplay(requireView())
+                showMessageToast("Mood selection reset for testing")
+            }
+        }
+    }
+
+    private fun showMessageToast(message: String) {
+        android.widget.Toast.makeText(requireContext(), message, android.widget.Toast.LENGTH_SHORT).show()
+    }
+    /* ----------------------------- End Developer Mode Methods ----------------------------- */
+
+    /* ----------------------------- Mood Selection Status ----------------------------- */
+    private fun checkMoodSelectionStatus() {
+        val sharedPref = requireActivity().getSharedPreferences("MoodPrefs", AppCompatActivity.MODE_PRIVATE)
+        val lastMoodDate = sharedPref.getString("LAST_MOOD_DATE", "")
+        val currentDate = getCurrentDate()
+
+        // Show mood selection if it's a new day or no selection has been made yet
+        if (lastMoodDate.isNullOrEmpty() || lastMoodDate != currentDate) {
+            moodParentContainer?.visibility = View.VISIBLE
+        } else {
+            moodParentContainer?.visibility = View.GONE
+        }
+    }
+
+    private fun getCurrentDate(): String {
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+        return dateFormat.format(java.util.Date())
+    }
+    /* ----------------------------- End Mood Selection Status ----------------------------- */
 
     /* ----------------------------- Emoji Setup Methods ----------------------------- */
     private fun setupMoodEmojis(view: View) {
@@ -77,6 +154,50 @@ class HomeFragment : Fragment() {
         }
     }
     /* ----------------------------- End Emoji Setup Methods ----------------------------- */
+
+    /* ----------------------------- Mood Display Methods ----------------------------- */
+    private fun updateMoodDisplay(view: View) {
+        // Get the saved mood data
+        val sharedPref = requireActivity().getSharedPreferences("MoodPrefs", AppCompatActivity.MODE_PRIVATE)
+        val moodType = sharedPref.getString("LAST_MOOD_TYPE", null)
+        val moodIntensity = sharedPref.getInt("LAST_MOOD_INTENSITY", 0)
+
+        // Find the container where we'll display the current mood
+        val currentMoodContainer = view.findViewById<LinearLayout>(R.id.current_mood_container)
+        val currentMoodCard = view.findViewById<View>(R.id.current_mood_card)
+
+        // If there's no saved mood data, hide the container
+        if (moodType == null || moodIntensity == 0) {
+            currentMoodCard.visibility = View.GONE
+            return
+        }
+
+        // Set visibility to VISIBLE
+        currentMoodCard.visibility = View.VISIBLE
+
+        // Set the mood emoji
+        val moodEmoji = view.findViewById<ImageView>(R.id.current_mood_emoji)
+        val emojiResource = when (moodType) {
+            "Marah" -> R.drawable.icon_mood_marah
+            "Sedih" -> R.drawable.icon_mood_sedih
+            "Bahagia" -> R.drawable.icon_mood_bahagia
+            else -> R.drawable.icon_mood_biasa
+        }
+        moodEmoji.setImageResource(emojiResource)
+
+        // Set the mood text
+        val moodText = view.findViewById<TextView>(R.id.current_mood_text)
+        moodText.text = "Saya merasa $moodType dengan intensitas $moodIntensity pada hari ini."
+
+        // Optional: Get and display the note text if you want to include it
+        val moodNote = sharedPref.getString("LAST_MOOD_NOTE", "")
+        if (!moodNote.isNullOrEmpty()) {
+            val noteTextView = view.findViewById<TextView>(R.id.current_mood_note)
+            noteTextView?.text = moodNote
+            noteTextView?.visibility = View.VISIBLE
+        }
+    }
+    /* ----------------------------- End Mood Display Methods ----------------------------- */
 
     /* ----------------------------- Animation Methods ----------------------------- */
     private fun animateEmoji(view: View) {
@@ -153,6 +274,9 @@ class HomeFragment : Fragment() {
                 saveMoodRating(moodType, currentValue)
                 dialog.dismiss()
                 val intent = Intent(requireContext(), Notes::class.java)
+                // Pass the mood data to Notes activity
+                intent.putExtra("MOOD_TYPE", moodType)
+                intent.putExtra("MOOD_INTENSITY", currentValue)
                 startActivity(intent)
             }
         }
@@ -162,10 +286,21 @@ class HomeFragment : Fragment() {
 
     /* ----------------------------- Data Methods ----------------------------- */
     private fun saveMoodRating(moodType: String, rating: Int) {
-        // Implement your logic to save the mood rating
-        // This could be storing to SharedPreferences, a database, or sending to an API
-        // For now, we'll just print to the console
-        println("Mood: $moodType, Rating: $rating")
+        // Store the mood with the current date
+        val sharedPref = requireActivity().getSharedPreferences("MoodPrefs", AppCompatActivity.MODE_PRIVATE)
+        val currentDate = getCurrentDate()
+
+        with(sharedPref.edit()) {
+            putString("TEMP_MOOD_TYPE", moodType)
+            putInt("TEMP_MOOD_INTENSITY", rating)
+            putString("LAST_MOOD_DATE", currentDate)
+            apply()
+        }
+
+        // Hide the mood selection after user makes a choice
+        checkMoodSelectionStatus()
+
+        println("Mood: $moodType, Rating: $rating, Date: $currentDate")
     }
     /* ----------------------------- End Data Methods ----------------------------- */
 
@@ -179,7 +314,7 @@ class HomeFragment : Fragment() {
             }
         }
         view.findViewById<View>(R.id.btnViewCalendar)?.setOnClickListener {
-            // Navigate to TaskLogActivity with animation
+            // Navigate to ViewCalendarActivity with animation
             animateButtonAndExecute(it) {
                 val intent = Intent(requireContext(), ViewCalendarActivity::class.java)
                 startActivity(intent)
@@ -188,7 +323,7 @@ class HomeFragment : Fragment() {
     }
     /* ----------------------------- End Navigation ----------------------------- */
 
-    /* ----------------------------- Profil Navigation ----------------------------- */
+    /* ----------------------------- Profile Navigation ----------------------------- */
     private fun setupProfileButton(view: View) {
         val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
         profileButton.setOnClickListener {
@@ -198,8 +333,5 @@ class HomeFragment : Fragment() {
             }
         }
     }
-    /* ----------------------------- Profil Navigation ----------------------------- */
-
-
-
+    /* ----------------------------- End Profile Navigation ----------------------------- */
 }
