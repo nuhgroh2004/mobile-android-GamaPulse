@@ -8,6 +8,9 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import androidx.activity.enableEdgeToEdge
+import android.graphics.Color
+import android.util.TypedValue
+import cn.pedant.SweetAlert.SweetAlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.gamapulse.databinding.ActivityNotesBinding
 import java.text.SimpleDateFormat
@@ -38,27 +41,86 @@ class Notes : AppCompatActivity() {
 
         binding.btnSimpan.setOnClickListener {
             animateButtonAndExecute(it) {
-                // Save note data logic here
-                val catatan = binding.editTextCatatan.text.toString()
+                // Show confirmation dialog before saving
+                val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
+                    .setTitleText("Konfirmasi")
+                    .setContentText("Apakah Anda yakin ingin menyimpan catatan ini?")
+                    .setCancelText("Batal")
+                    .setConfirmText("Simpan")
+                    .showCancelButton(true)
+                    .setConfirmClickListener { sDialog ->
+                        // Save note data logic here
+                        val catatan = binding.editTextCatatan.text.toString()
 
-                // Get the mood data from the intent extras
-                val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
-                val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
+                        // Get the mood data from the intent extras
+                        val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
+                        val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
 
-                // Store the data in SharedPreferences
-                val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
-                val currentDate = getCurrentDate()
+                        // Store the data in SharedPreferences
+                        val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+                        val currentDate = getCurrentDate()
 
-                with(sharedPref.edit()) {
-                    putString("LAST_MOOD_TYPE", moodType)
-                    putInt("LAST_MOOD_INTENSITY", moodIntensity)
-                    putString("LAST_MOOD_NOTE", catatan)
-                    putString("LAST_MOOD_DATE", currentDate)  // Save the current date
-                    apply()
+                        with(sharedPref.edit()) {
+                            putString("LAST_MOOD_TYPE", moodType)
+                            putInt("LAST_MOOD_INTENSITY", moodIntensity)
+                            putString("LAST_MOOD_NOTE", catatan)
+                            putString("LAST_MOOD_DATE", currentDate)  // Save the current date
+                            apply()
+                        }
+
+                        sDialog.dismissWithAnimation()
+
+                        // Show success dialog
+                        val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
+                            .setTitleText("Berhasil!")
+                            .setContentText("Catatan berhasil disimpan")
+                            .setConfirmClickListener { it ->
+                                it.dismissWithAnimation()
+                                finish() // Return to previous screen
+                            }
+
+                        successDialog.show()
+
+                        // Apply styling after showing the dialog
+                        successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
+                            background = resources.getDrawable(R.drawable.allert_button_ok, theme)
+                            setTextColor(Color.WHITE)
+                            setPadding(24, 12, 24, 12)
+                            minWidth = TypedValue.applyDimension(
+                                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+                            ).toInt()
+                            backgroundTintList = null
+                        }
+                    }
+                    .setCancelClickListener { sDialog ->
+                        sDialog.dismissWithAnimation()
+                    }
+
+                dialog.show()
+
+                // Apply styling to the buttons
+                val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
+                val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
+
+                cancelButton.apply {
+                    background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
+                    setTextColor(Color.WHITE)
+                    setPadding(24, 12, 24, 12)
+                    minWidth = TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+                    ).toInt()
+                    backgroundTintList = null
                 }
 
-                // Return to previous screen
-                finish()
+                confirmButton.apply {
+                    background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
+                    setTextColor(Color.WHITE)
+                    setPadding(24, 12, 24, 12)
+                    minWidth = TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+                    ).toInt()
+                    backgroundTintList = null
+                }
             }
         }
     }
