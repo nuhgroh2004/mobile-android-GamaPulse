@@ -27,4 +27,8 @@
     <color name="green_allowed">#6CE5A0</color>
     <color name="red_rejected">#F88379</color>
     <color name="background_gray">#F5F5F5</color>
+
+    <color name="loading_dark_teal">#17A2B8</color>
+    <color name="loading_medium_teal">#88D8E0</color>
+    <color name="loading_light_teal">#D1F2F6</color>
 </resources>

@@ -39,7 +39,8 @@ class LoginActivity : AppCompatActivity() {
         // parameter view password icon
 
         findViewById<Button>(R.id.btnLogin).foreground = getRippleDrawable(getColor(R.color.teal))
-        setupButtonWithAnimation(findViewById(R.id.btnLogin), MainActivity::class.java)
+        // Modified to go to LoadingActivity first
+        setupButtonWithAnimation(findViewById(R.id.btnLogin), LoadingActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.tvSignUp), RegisterActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnBack), SparseScreenActivity::class.java)
     }

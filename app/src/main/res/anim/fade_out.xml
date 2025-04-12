@@ -1,18 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:fillAfter="true">
-    <alpha
-        android:duration="450"
-        android:fromAlpha="1.0"
-        android:toAlpha="0.0"
-        android:interpolator="@android:interpolator/fast_out_linear_in" />
-    <scale
-        android:duration="450"
-        android:fromXScale="1.0"
-        android:fromYScale="1.0"
-        android:toXScale="1.08"
-        android:toYScale="1.08"
-        android:pivotX="50%"
-        android:pivotY="50%"
-        android:interpolator="@android:interpolator/fast_out_linear_in" />
-</set>
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:fromAlpha="1.0"
+    android:toAlpha="0.5"
+    android:duration="500" />
+<!--<?xml version="1.0" encoding="utf-8"?>-->
+<!--<set xmlns:android="http://schemas.android.com/apk/res/android"-->
+<!--    android:fillAfter="true">-->
+<!--    <alpha-->
+<!--        android:duration="450"-->
+<!--        android:fromAlpha="1.0"-->
+<!--        android:toAlpha="0.0"-->
+<!--        android:interpolator="@android:interpolator/fast_out_linear_in" />-->
+<!--    <scale-->
+<!--        android:duration="450"-->
+<!--        android:fromXScale="1.0"-->
+<!--        android:fromYScale="1.0"-->
+<!--        android:toXScale="1.08"-->
+<!--        android:toYScale="1.08"-->
+<!--        android:pivotX="50%"-->
+<!--        android:pivotY="50%"-->
+<!--        android:interpolator="@android:interpolator/fast_out_linear_in" />-->
+<!--</set>-->
