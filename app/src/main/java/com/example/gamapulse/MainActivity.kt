@@ -12,11 +12,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
         val bottomNavView = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         supportFragmentManager.beginTransaction().replace(R.id.fragment_container, HomeFragment()).commit()
-
-        // Handling navigation
         bottomNavView.setOnNavigationItemSelectedListener { item ->
             val selectedFragment = when (item.itemId) {
                 R.id.home -> HomeFragment()

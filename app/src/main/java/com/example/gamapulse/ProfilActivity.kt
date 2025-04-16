@@ -1,6 +1,7 @@
 package com.example.gamapulse
 
 import android.app.DatePickerDialog
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
@@ -31,6 +32,7 @@ class ProfilActivity : AppCompatActivity() {
         setupBackButton()
         setupEditButton()
         setupDatePicker()
+        setupLogoutButton()
     }
 
     private fun loadUserData() {
@@ -56,21 +58,60 @@ class ProfilActivity : AppCompatActivity() {
         binding.btnUpdateProfile.setOnClickListener {
             if (!isEditMode) {
                 isEditMode = true
-                binding.btnUpdateProfile.text = "Cancel"
+                binding.btnUpdateProfile.text = "Batal"
                 binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.red))
                 enableEditMode(true)
+                binding.btnLogOut.visibility = View.GONE // Hide logout button
             } else {
                 isEditMode = false
-                binding.btnUpdateProfile.text = "Update Profile"
+                binding.btnUpdateProfile.text = "Ubah Profile"
                 binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
                 enableEditMode(false)
                 loadUserData()
+                binding.btnLogOut.visibility = View.VISIBLE // Show logout button
             }
         }
 
         binding.btnSave.setOnClickListener {
             showSaveConfirmation()
         }
+    }
+
+    private fun setupLogoutButton() {
+        binding.btnLogOut.setOnClickListener {
+            val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
+                .setTitleText("Konfirmasi Logout")
+                .setContentText("Apakah Anda yakin ingin keluar dari akun?")
+                .setCancelText("Batal")
+                .setConfirmText("Keluar")
+                .showCancelButton(true)
+                .setConfirmClickListener { sDialog ->
+                    sDialog.dismissWithAnimation()
+
+                    val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
+                        .setTitleText("Berhasil!")
+                        .setContentText("Anda telah berhasil logout.")
+                        .setConfirmClickListener { it ->
+                            it.dismissWithAnimation()
+                            navigateToLoginActivity()
+                        }
+
+                    successDialog.show()
+                    styleConfirmButton(successDialog)
+                }
+                .setCancelClickListener { sDialog ->
+                    sDialog.dismissWithAnimation()
+                }
+
+            dialog.show()
+            styleAlertButtons(dialog)
+        }
+    }
+
+    private fun navigateToLoginActivity() {
+        val intent = Intent(this, LoginActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
     private fun showSaveConfirmation() {
@@ -90,9 +131,10 @@ class ProfilActivity : AppCompatActivity() {
                     .setConfirmClickListener { it ->
                         it.dismissWithAnimation()
                         isEditMode = false
-                        binding.btnUpdateProfile.text = "Update Profile"
+                        binding.btnUpdateProfile.text = "Ubah Profile"
                         binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
                         enableEditMode(false)
+                        binding.btnLogOut.visibility = View.VISIBLE // Show logout button
                     }
 
                 successDialog.show()

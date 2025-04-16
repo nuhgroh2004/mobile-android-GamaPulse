@@ -24,11 +24,8 @@ class LoadingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Set status bar color to match background
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
         window.statusBarColor = ContextCompat.getColor(this, R.color.white)
-
         setContentView(R.layout.activity_loading)
         squareTopLeft = findViewById(R.id.square_top_left)
         squareTopRight = findViewById(R.id.square_top_right)
@@ -36,11 +33,9 @@ class LoadingActivity : AppCompatActivity() {
         squareBottomRight = findViewById(R.id.square_bottom_right)
         loadingText = findViewById(R.id.loading_text)
         startLoadingAnimation()
-
-        // Ensure we transition to MainActivity after a fixed time
         Handler(Looper.getMainLooper()).postDelayed({
             navigateToMainActivity()
-        }, 2000) // 5 seconds timeout
+        }, 2000)
     }
 
     private fun startLoadingAnimation() {
@@ -54,7 +49,6 @@ class LoadingActivity : AppCompatActivity() {
         val bottomRightScale = createScaleAnimator(squareBottomRight, 0.8f, 1.0f, animDuration)
         val bottomRightAlpha = createAlphaAnimator(squareBottomRight, 0.5f, 1.0f, animDuration)
         val textAnimator = createLoadingTextAnimator(loadingText)
-
         val set1 = AnimatorSet().apply {
             playTogether(topLeftScale, topLeftAlpha)
         }
@@ -70,11 +64,9 @@ class LoadingActivity : AppCompatActivity() {
             playTogether(bottomLeftScale, bottomLeftAlpha)
             startDelay = animDuration / 2
         }
-
         val mainSet = AnimatorSet().apply {
             playTogether(set1, set2, set3, set4, textAnimator)
         }
-
         mainSet.doOnEnd {
             navigateToMainActivity()
         }
@@ -82,7 +74,6 @@ class LoadingActivity : AppCompatActivity() {
     }
 
     private fun navigateToMainActivity() {
-        // Check if activity is not finishing to avoid crashes
         if (!isFinishing && !isDestroyed) {
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)

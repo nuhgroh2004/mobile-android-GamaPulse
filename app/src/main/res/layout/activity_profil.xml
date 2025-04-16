@@ -244,10 +244,11 @@
                 android:backgroundTint="@color/blue"
                 android:paddingTop="12dp"
                 android:paddingBottom="12dp"
-                android:text="Update Profile"
+                android:text="Ubah Profile"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFF"
                 app:cornerRadius="6dp" />
+
 
             <!-- Save Button (initially hidden) -->
             <com.google.android.material.button.MaterialButton
@@ -263,6 +264,23 @@
                 android:textColor="#FFFFFF"
                 android:visibility="gone"
                 app:cornerRadius="6dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnLogOut"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:backgroundTint="@color/red"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:text="Keluar dari akun"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                app:cornerRadius="6dp"
+                app:icon="@drawable/ic_logout"
+                app:iconGravity="textStart"
+                app:iconTint="#FFFFFF"
+                app:iconPadding="8dp" />
 
         </LinearLayout>
     </ScrollView>

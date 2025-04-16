@@ -2,7 +2,6 @@ package com.example.gamapulse
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -23,7 +22,6 @@ import androidx.core.view.WindowInsetsCompat
 import cn.pedant.SweetAlert.SweetAlertDialog
 
 class EditMoodNotesActivity : AppCompatActivity() {
-
     private lateinit var moodTitleTextView: TextView
     private lateinit var selectedMoodImageView: ImageView
     private lateinit var moodNotesEditText: EditText
@@ -36,7 +34,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
     private lateinit var happyMoodImageView: ImageView
     private lateinit var calmMoodImageView: ImageView
     private var currentMoodIntensity = 1
-
     private var currentMood = "Marah"
     private var selectedMoodView: ImageView? = null
 
@@ -44,26 +41,19 @@ class EditMoodNotesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_edit_mood_notes)
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
         initializeViews()
-
         val mood = intent.getStringExtra("mood") ?: "Marah"
         val notes = intent.getStringExtra("notes") ?: ""
-
         currentMood = mood
         updateMoodDisplay()
         moodNotesEditText.setText(notes)
-
         setViewMode(isEditMode = false)
-
         setupClickListeners()
-
         when (currentMood) {
             "Marah" -> selectMoodView(angryMoodImageView)
             "Sedih" -> selectMoodView(sadMoodImageView)
@@ -80,7 +70,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
         editButton = findViewById(R.id.editButton)
         saveButton = findViewById(R.id.saveButton)
         cancelButton = findViewById(R.id.cancelButton)
-
         angryMoodImageView = findViewById(R.id.angryMoodImageView)
         sadMoodImageView = findViewById(R.id.sadMoodImageView)
         happyMoodImageView = findViewById(R.id.happyMoodImageView)
@@ -91,15 +80,12 @@ class EditMoodNotesActivity : AppCompatActivity() {
         editButton.setOnClickListener {
             setViewMode(isEditMode = true)
         }
-
         saveButton.setOnClickListener {
             showSaveConfirmation()
         }
-
         cancelButton.setOnClickListener {
             finish()
         }
-
         setupMoodSelectionListeners()
     }
 
@@ -113,7 +99,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
             .setConfirmClickListener { sDialog ->
                 saveMoodData()
                 sDialog.dismissWithAnimation()
-
                 val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
                     .setTitleText("Berhasil!")
                     .setContentText("Catatan mood berhasil disimpan")
@@ -121,10 +106,7 @@ class EditMoodNotesActivity : AppCompatActivity() {
                         it.dismissWithAnimation()
                         setViewMode(isEditMode = false)
                     }
-
                 successDialog.show()
-
-                // Apply styling after showing the dialog
                 successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
                     background = resources.getDrawable(R.drawable.allert_button_ok, theme)
                     setTextColor(Color.WHITE)
@@ -138,12 +120,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
             .setCancelClickListener { sDialog ->
                 sDialog.dismissWithAnimation()
             }
-
         dialog.show()
-
         val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
         val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-
         cancelButton.apply {
             background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
             setTextColor(Color.WHITE)
@@ -153,7 +132,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
             ).toInt()
             backgroundTintList = null
         }
-
         confirmButton.apply {
             background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
             setTextColor(Color.WHITE)
@@ -168,7 +146,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
     private fun showMoodRatingPopup(moodType: String) {
         val inflater = LayoutInflater.from(this)
         val popupView = inflater.inflate(R.layout.popup_intensitas_mood, null)
-
         val titleTextView = popupView.findViewById<TextView>(R.id.popup_title)
         val numberPickerValue = popupView.findViewById<TextView>(R.id.number_value)
         val increaseButton = popupView.findViewById<View>(R.id.increase_button)
@@ -177,34 +154,28 @@ class EditMoodNotesActivity : AppCompatActivity() {
         val okButton = popupView.findViewById<Button>(R.id.ok_button)
 
         titleTextView.text = "Seberapa $moodType kamu?"
-
         var currentValue = currentMoodIntensity
         numberPickerValue.text = currentValue.toString()
-
         increaseButton.setOnClickListener {
             if (currentValue < 5) {
                 currentValue++
                 numberPickerValue.text = currentValue.toString()
             }
         }
-
         decreaseButton.setOnClickListener {
             if (currentValue > 1) {
                 currentValue--
                 numberPickerValue.text = currentValue.toString()
             }
         }
-
         val dialog = AlertDialog.Builder(this).setView(popupView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
         cancelButton.setOnClickListener {
             cancelButton.background = ColorDrawable(Color.RED)
             animateButtonAndExecute(cancelButton) {
                 dialog.dismiss()
             }
         }
-
         okButton.setOnClickListener {
             animateButtonAndExecute(okButton) {
                 currentMoodIntensity = currentValue
@@ -212,7 +183,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
         }
-
         dialog.show()
     }
 
@@ -228,7 +198,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
             happyMoodImageView,
             calmMoodImageView
         )
-
         moodViews.forEach { moodView ->
             moodView.setOnClickListener {
                 currentMood = it.tag as String
@@ -268,13 +237,8 @@ class EditMoodNotesActivity : AppCompatActivity() {
         }.start()
     }
 
-    private fun getRippleDrawable(color: Int): ColorStateList {
-        return ColorStateList.valueOf(color)
-    }
-
     private fun updateMoodDisplay() {
         moodTitleTextView.text = "SAYA MERASA ${currentMood.uppercase()} (${currentMoodIntensity})"
-
         val drawableId = when (currentMood) {
             "Marah" -> R.drawable.icon_mood_marah
             "Sedih" -> R.drawable.icon_mood_sedih
@@ -282,7 +246,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
             "Biasa" -> R.drawable.icon_mood_biasa
             else -> R.drawable.icon_mood_biasa
         }
-
         selectedMoodImageView.setImageResource(drawableId)
     }
 
