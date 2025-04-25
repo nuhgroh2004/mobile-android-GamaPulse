@@ -1,82 +1,76 @@
 package com.example.gamapulse
 
 import android.content.Intent
-import android.content.res.ColorStateList
-import android.graphics.drawable.ColorDrawable
-import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
-import android.text.method.HideReturnsTransformationMethod
-import android.text.method.PasswordTransformationMethod
-import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageButton
-import androidx.activity.enableEdgeToEdge
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.example.gamapulse.model.LoginRequest
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LoginActivity : AppCompatActivity() {
+    private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
-    private lateinit var btnTogglePassword: ImageButton
-    private var isPasswordVisible = false
+    private lateinit var btnLogin: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContentView(R.layout.activity_login)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-        // parameter view password icon
+
+        etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
-        btnTogglePassword = findViewById(R.id.btnTogglePassword)
-        btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
-        btnTogglePassword.background = null
-        btnTogglePassword.setOnClickListener { togglePasswordVisibility() }
-        // parameter view password icon
+        btnLogin = findViewById(R.id.btnLogin)
 
-        findViewById<Button>(R.id.btnLogin).foreground = getRippleDrawable(getColor(R.color.teal))
-        // Modified to go to LoadingActivity first
-        setupButtonWithAnimation(findViewById(R.id.btnLogin), LoadingActivity::class.java)
-        setupButtonWithAnimation(findViewById(R.id.tvSignUp), RegisterActivity::class.java)
-        setupButtonWithAnimation(findViewById(R.id.btnBack), SparseScreenActivity::class.java)
-    }
-    // Funsi view password
-    private fun togglePasswordVisibility() {
-        isPasswordVisible = !isPasswordVisible
-        if (isPasswordVisible) {
-            etPassword.transformationMethod = HideReturnsTransformationMethod.getInstance()
-            btnTogglePassword.setImageResource(R.drawable.ic_visibility)
-        } else {
-            etPassword.transformationMethod = PasswordTransformationMethod.getInstance()
-            btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
-        }
-        etPassword.setSelection(etPassword.text.length)
-    }
-    // Funsi view password
+        btnLogin.setOnClickListener {
+            val email = etEmail.text.toString()
+            val password = etPassword.text.toString()
 
-    // Fungsi untuk mengatur animasi tombol
-    private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
-        button.setOnClickListener {
-            it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
-                it.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
-                it.postDelayed({
-                    val intent = Intent(this, destinationClass)
-                    startActivity(intent)
-                }, 150)
-            }.start()
+            if (email.isNotEmpty() && password.isNotEmpty()) {
+                login(email, password)
+            } else {
+                Toast.makeText(this, "Email and Password cannot be empty", Toast.LENGTH_SHORT).show()
+            }
         }
     }
-    private fun getRippleDrawable(color: Int): RippleDrawable {
-        return RippleDrawable(
-            ColorStateList.valueOf(getColor(R.color.ripple_color)),
-            null,
-            ColorDrawable(color)
-        )
+
+    private fun login(email: String, password: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.login(LoginRequest(email, password))
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@LoginActivity, "Login Successful", Toast.LENGTH_SHORT).show()
+                        val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                        startActivity(intent)
+                        finish()
+                    } else {
+                        Toast.makeText(this@LoginActivity, "Login Failed: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@LoginActivity, "Connection Failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
-    // Fungsi untuk mengatur animasi tombol
+
+    private fun saveToken(token: String) {
+        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("token", token)
+        editor.apply()
+    }
+
+    private fun navigateToLoading() {
+        val intent = Intent(this, LoadingActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
 
 }

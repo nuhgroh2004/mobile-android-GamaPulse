@@ -76,6 +76,7 @@ class LoadingActivity : AppCompatActivity() {
     private fun navigateToMainActivity() {
         if (!isFinishing && !isDestroyed) {
             val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("navigateTo", "HomeFragment")
             startActivity(intent)
             overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
             finish()
