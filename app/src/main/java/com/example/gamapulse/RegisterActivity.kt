@@ -11,13 +11,29 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import com.example.gamapulse.model.RegisterRequest
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
 
 class RegisterActivity : AppCompatActivity() {
+    private lateinit var etUsername: EditText
+    private lateinit var etEmailUgm: EditText
+    private lateinit var etProdi: EditText
+    private lateinit var etTanggalLahir: EditText
+    private lateinit var etNomorTelepon: EditText
+    private lateinit var etNIM: EditText
     private lateinit var etPassword: EditText
+    private lateinit var btnRegister: Button
     private lateinit var btnTogglePassword: ImageButton
     private var isPasswordVisible = false
 
@@ -30,21 +46,35 @@ class RegisterActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-        // parameter view password icon
-        etPassword = findViewById(R.id.etPassword)
-        btnTogglePassword = findViewById(R.id.btnTogglePassword)
-        btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
-        btnTogglePassword.background = null
-        btnTogglePassword.setOnClickListener {togglePasswordVisibility()}
-        // parameter view password icon
 
-        findViewById<Button>(R.id.btnRegister).foreground = getRippleDrawable(getColor(R.color.teal))
-        setupButtonWithAnimation(findViewById(R.id.btnRegister), MainActivity::class.java)
+        initializeViews()
+        setupPasswordVisibility()
+
+        btnRegister.foreground = getRippleDrawable(getColor(R.color.teal))
+        btnRegister.setOnClickListener { validateAndRegister() }
+
         setupButtonWithAnimation(findViewById(R.id.tvSignIn), LoginActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnBack), SparseScreenActivity::class.java)
     }
 
-    // Funsi view password
+    private fun initializeViews() {
+        etUsername = findViewById(R.id.etUsername)
+        etEmailUgm = findViewById(R.id.etEmailUgm)
+        etProdi = findViewById(R.id.etProdi)
+        etTanggalLahir = findViewById(R.id.etTanggalLahir)
+        etNomorTelepon = findViewById(R.id.etNomorTelepon)
+        etNIM = findViewById(R.id.etNIM)
+        etPassword = findViewById(R.id.etPassword)
+        btnRegister = findViewById(R.id.btnRegister)
+        btnTogglePassword = findViewById(R.id.btnTogglePassword)
+    }
+
+    private fun setupPasswordVisibility() {
+        btnTogglePassword.setImageResource(R.drawable.ic_visibility_off)
+        btnTogglePassword.background = null
+        btnTogglePassword.setOnClickListener { togglePasswordVisibility() }
+    }
+
     private fun togglePasswordVisibility() {
         isPasswordVisible = !isPasswordVisible
         if (isPasswordVisible) {
@@ -56,9 +86,105 @@ class RegisterActivity : AppCompatActivity() {
         }
         etPassword.setSelection(etPassword.text.length)
     }
-    // Funsi view password
 
-    // Fungsi untuk mengatur animasi tombol
+    private fun validateAndRegister() {
+        val name = etUsername.text.toString().trim()
+        val email = etEmailUgm.text.toString().trim()
+        val prodi = etProdi.text.toString().trim()
+        val tanggalLahir = etTanggalLahir.text.toString().trim()
+        val phoneNumber = etNomorTelepon.text.toString().trim()
+        val nim = etNIM.text.toString().trim()
+        val password = etPassword.text.toString().trim()
+
+        // Validation checks
+        if (name.isEmpty() || email.isEmpty() || prodi.isEmpty() ||
+            tanggalLahir.isEmpty() || phoneNumber.isEmpty() ||
+            nim.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Email validation for UGM domain
+        if (!email.endsWith("@mail.ugm.ac.id") && !email.endsWith("@ugm.ac.id")) {
+            Toast.makeText(this, "Please use a valid UGM email", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Validate NIM format (XX/XXXXXX/AA/XXXXX)
+        val nimRegex = "^\\d{2}/\\d{6}/[A-Za-z]{2}/\\d{5}$".toRegex()
+        if (!nimRegex.matches(nim)) {
+            Toast.makeText(this, "NIM format should be XX/XXXXXX/AA/XXXXX", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val registerRequest = RegisterRequest(
+            name = name,
+            email = email,
+            prodi = prodi,
+            tanggal_lahir = tanggalLahir,
+            phone_number = phoneNumber,
+            nim = nim,
+            password = password
+        )
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.register(registerRequest)
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        val registerResponse = response.body()
+                        println("REGISTER SUCCESS: ${registerResponse?.message}")
+
+                        // Save token if available
+                        if (registerResponse?.token != null) {
+                            saveAuthToken(registerResponse.token)
+                        }
+
+                        Toast.makeText(this@RegisterActivity,
+                            "Registration successful", Toast.LENGTH_SHORT).show()
+
+                        // Navigate to MainActivity
+                        navigateToMainActivity()
+                    } else {
+                        val errorMsg = try {
+                            response.errorBody()?.string() ?: "Unknown error"
+                        } catch (e: Exception) {
+                            "Error: ${response.code()}"
+                        }
+                        Toast.makeText(this@RegisterActivity,
+                            "Registration Failed: $errorMsg", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@RegisterActivity,
+                        "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun navigateToMainActivity() {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
+    }
+
+    private fun saveAuthToken(token: String) {
+        val sharedPreferences = getSharedPreferences("GamaPulsePrefs", MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putString("auth_token", token)
+            apply()
+        }
+    }
+
+//    private fun navigateToLogin() {
+//        val intent = Intent(this, LoginActivity::class.java)
+//        startActivity(intent)
+//        finish()
+//    }
+
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {
             it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
@@ -70,6 +196,7 @@ class RegisterActivity : AppCompatActivity() {
             }.start()
         }
     }
+
     private fun getRippleDrawable(color: Int): RippleDrawable {
         return RippleDrawable(
             ColorStateList.valueOf(getColor(R.color.ripple_color)),
@@ -77,5 +204,4 @@ class RegisterActivity : AppCompatActivity() {
             ColorDrawable(color)
         )
     }
-    // Fungsi untuk mengatur animasi tombol
 }

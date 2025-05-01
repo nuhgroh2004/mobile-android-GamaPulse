@@ -127,7 +127,7 @@
             android:layout_marginTop="16dp"
             android:background="@drawable/edit_text_background"
             android:hint="NIM"
-            android:inputType="number"
+            android:inputType="text"
             android:padding="16dp"
             android:textColor="@color/text_color"
             android:textColorHint="@color/hint_color"
