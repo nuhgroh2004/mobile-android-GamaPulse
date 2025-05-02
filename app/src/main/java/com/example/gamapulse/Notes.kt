@@ -6,18 +6,27 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import android.graphics.Color
+import android.util.Log
 import android.util.TypedValue
 import cn.pedant.SweetAlert.SweetAlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.example.gamapulse.databinding.ActivityNotesBinding
+import com.example.gamapulse.model.StoreMoodRequest
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class Notes : AppCompatActivity() {
     private lateinit var binding: ActivityNotesBinding
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -49,6 +58,8 @@ class Notes : AppCompatActivity() {
                         val catatan = binding.editTextCatatan.text.toString()
                         val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
                         val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
+
+                        // Save locally
                         val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
                         val currentDate = getCurrentDate()
                         with(sharedPref.edit()) {
@@ -58,6 +69,10 @@ class Notes : AppCompatActivity() {
                             putString("LAST_MOOD_DATE", currentDate)
                             apply()
                         }
+
+                        // Save to API
+                        saveMoodToApi(moodType, moodIntensity.toString(), catatan)
+
                         sDialog.dismissWithAnimation()
                         val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
                             .setTitleText("Berhasil!")
@@ -72,46 +87,18 @@ class Notes : AppCompatActivity() {
                                 finish()
                             }
                         successDialog.show()
-                        successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
-                            background = resources.getDrawable(R.drawable.allert_button_ok, theme)
-                            setTextColor(Color.WHITE)
-                            setPadding(24, 12, 24, 12)
-                            minWidth = TypedValue.applyDimension(
-                                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-                            ).toInt()
-                            backgroundTintList = null
-                        }
+                        styleConfirmButton(successDialog)
                     }
                     .setCancelClickListener { sDialog ->
                         sDialog.dismissWithAnimation()
                     }
                 dialog.show()
-                val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
-                val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-                cancelButton.apply {
-                    background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
-                    setTextColor(Color.WHITE)
-                    setPadding(24, 12, 24, 12)
-                    minWidth = TypedValue.applyDimension(
-                        TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-                    ).toInt()
-                    backgroundTintList = null
-                }
-                confirmButton.apply {
-                    background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
-                    setTextColor(Color.WHITE)
-                    setPadding(24, 12, 24, 12)
-                    minWidth = TypedValue.applyDimension(
-                        TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-                    ).toInt()
-                    backgroundTintList = null
-                }
+                styleAlertButtons(dialog)
             }
         }
     }
-    @Override
+
     override fun onBackPressed() {
-        // When user manually presses back button, clear temporary navigation flag
         val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
         with(sharedPref.edit()) {
             putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
@@ -125,7 +112,6 @@ class Notes : AppCompatActivity() {
         return dateFormat.format(Date())
     }
 
-    // Function for button animation and action execution
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
         view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
             view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
@@ -135,7 +121,6 @@ class Notes : AppCompatActivity() {
         }.start()
     }
 
-    // Function for button animation
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {
             it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
@@ -154,5 +139,96 @@ class Notes : AppCompatActivity() {
             null,
             ColorDrawable(color)
         )
+    }
+
+    private fun saveMoodToApi(emotion: String, intensity: String, notes: String) {
+        val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
+        val token = sharedPreferences.getString("token", null)
+
+        if (token == null) {
+            Toast.makeText(this, "Authentication error. Please login again.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Map local mood names to backend-expected mood names
+        val mappedEmotion = when (emotion) {
+            "Biasa" -> "Biasa saja"
+            "Bahagia" -> "Senang"
+            else -> emotion // Keep "Marah" and "Sedih" as they are
+        }
+
+        val validIntensity = if (intensity.isEmpty() || intensity == "0") "1" else intensity
+
+        val authToken = "Bearer $token"
+        val request = StoreMoodRequest(mappedEmotion, validIntensity, notes)
+
+        // Log the request for debugging
+        Log.d("MoodAPI", "Sending mood request: Original emotion: $emotion, Mapped to: $mappedEmotion, intensity: $validIntensity, notes: $notes")
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.storeMood(authToken, request)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Log.d("MoodAPI", "Mood saved successfully")
+                        // Success is already handled in the dialog
+                    } else {
+                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
+                        Log.e("MoodAPI", "Failed to save mood: $errorBody")
+                        Toast.makeText(
+                            this@Notes,
+                            "Failed to save mood: $errorBody",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Log.e("MoodAPI", "Exception while saving mood", e)
+                    Toast.makeText(
+                        this@Notes,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun styleConfirmButton(dialog: SweetAlertDialog) {
+        dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
+            background = getDrawable(R.drawable.allert_button_ok)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+    }
+
+    private fun styleAlertButtons(dialog: SweetAlertDialog) {
+        val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
+        val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
+
+        cancelButton?.apply {
+            background = getDrawable(R.drawable.allert_button_cancel)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
+
+        confirmButton?.apply {
+            background = getDrawable(R.drawable.allert_button_confirm)
+            setTextColor(Color.WHITE)
+            setPadding(24, 12, 24, 12)
+            minWidth = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+            ).toInt()
+            backgroundTintList = null
+        }
     }
 }

@@ -5,6 +5,7 @@ import com.example.gamapulse.model.LoginResponse
 import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.model.RegisterResponse
+import com.example.gamapulse.model.StoreMoodRequest
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -22,4 +23,9 @@ interface ApiService {
     @GET("api/mahasiswa/profil")
     suspend fun getProfile(@Header("Authorization") token: String): Response<ProfileResponse>
 
+    @POST("api/mahasiswa/store-mood")
+    suspend fun storeMood(
+        @Header("Authorization") token: String,
+        @Body request: StoreMoodRequest
+    ): Response<ResponseBody>
 }
