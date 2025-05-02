@@ -1,11 +1,8 @@
 package com.example.gamapulse.model
 
 data class User(
-    val id: String,
+    val user_id: Int,
     val name: String,
     val email: String,
-    val password: String,
-    val phone: String,
-    val address: String,
-    val profilePictureUrl: String
+    val role: String
 )

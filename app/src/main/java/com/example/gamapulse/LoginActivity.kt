@@ -1,5 +1,6 @@
 package com.example.gamapulse
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
@@ -52,10 +53,17 @@ class LoginActivity : AppCompatActivity() {
                 val response = ApiClient.apiService.login(LoginRequest(email, password))
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
-                        Toast.makeText(this@LoginActivity, "Login Successful", Toast.LENGTH_SHORT).show()
-                        val intent = Intent(this@LoginActivity, MainActivity::class.java)
-                        startActivity(intent)
-                        finish()
+                        val responseBody = response.body()
+                        if (responseBody != null) {
+                            // Save the token after successful login
+                            saveToken(responseBody.token)
+                            Toast.makeText(this@LoginActivity, "Login Successful", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this@LoginActivity, MainActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this@LoginActivity, "Empty response body", Toast.LENGTH_SHORT).show()
+                        }
                     } else {
                         Toast.makeText(this@LoginActivity, "Login Failed: ${response.message()}", Toast.LENGTH_SHORT).show()
                     }
@@ -69,7 +77,8 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun saveToken(token: String) {
-        val sharedPreferences = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        // Use "AuthPrefs" to match what's used in ProfilActivity
+        val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.putString("token", token)
         editor.apply()
@@ -80,5 +89,4 @@ class LoginActivity : AppCompatActivity() {
         startActivity(intent)
         finish()
     }
-
 }

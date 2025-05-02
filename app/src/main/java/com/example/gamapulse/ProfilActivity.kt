@@ -1,16 +1,24 @@
 package com.example.gamapulse
 
 import android.app.DatePickerDialog
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.gamapulse.databinding.ActivityProfilBinding
+import com.example.gamapulse.model.ProfileResponse
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -28,21 +36,73 @@ class ProfilActivity : AppCompatActivity() {
         }
         binding = ActivityProfilBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        loadUserData()
+
+        loadProfileFromApi()
         setupBackButton()
         setupEditButton()
         setupDatePicker()
         setupLogoutButton()
     }
 
-    private fun loadUserData() {
-        binding.tvUsername.text = "john_doe"
-        binding.etUsername.setText("john_doe")
-        binding.etEmail.setText("john.doe@example.com")
-        binding.etProgramStudy.setText("Computer Science")
-        binding.etNIM.setText("123456789")
-        binding.etDob.setText("15 Jan 1995")
-        binding.etPhone.setText("8123456789")
+    private fun getAuthToken(): String? {
+//        return "2|obe8R2DYU9pitzFyQy51ZzXIlU66P7dEWQrn00LL57578c10"
+        val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+        return sharedPreferences.getString("token", null)
+    }
+
+    private fun loadProfileFromApi() {
+        val token = getAuthToken()
+        if (token == null) {
+            Toast.makeText(this, "Please login first", Toast.LENGTH_SHORT).show()
+            navigateToLoginActivity()
+            return
+        }
+
+        val authToken = "Bearer $token"
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.getProfile(authToken)
+
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        val profileData = response.body()
+                        if (profileData != null) {
+                            updateUIWithProfileData(profileData)
+                        }
+                    } else {
+                        Toast.makeText(
+                            this@ProfilActivity,
+                            "Failed to load profile: ${response.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@ProfilActivity,
+                        "Error: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun updateUIWithProfileData(profileData: ProfileResponse) {
+        val user = profileData.user
+        val mahasiswa = profileData.mahasiswa
+
+        binding.tvUsername.text = user.name
+        binding.etUsername.setText(user.name)
+        binding.etEmail.setText(user.email)
+        binding.etProgramStudy.setText(mahasiswa.prodi)
+        binding.etNIM.setText(mahasiswa.NIM)
+        binding.etDob.setText(mahasiswa.tanggal_lahir)
+        mahasiswa.nomor_hp?.let {
+            binding.etPhone.setText(it.replace("+62", ""))
+        }
     }
 
     private fun setupBackButton() {
@@ -67,7 +127,7 @@ class ProfilActivity : AppCompatActivity() {
                 binding.btnUpdateProfile.text = "Ubah Profile"
                 binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
                 enableEditMode(false)
-                loadUserData()
+                loadProfileFromApi()
                 binding.btnLogOut.visibility = View.VISIBLE // Show logout button
             }
         }
@@ -87,6 +147,9 @@ class ProfilActivity : AppCompatActivity() {
                 .showCancelButton(true)
                 .setConfirmClickListener { sDialog ->
                     sDialog.dismissWithAnimation()
+
+                    // Clear token when logging out
+                    clearAuthToken()
 
                     val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
                         .setTitleText("Berhasil!")
@@ -108,8 +171,14 @@ class ProfilActivity : AppCompatActivity() {
         }
     }
 
+    private fun clearAuthToken() {
+        val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+        sharedPreferences.edit().remove("token").apply()
+    }
+
     private fun navigateToLoginActivity() {
         val intent = Intent(this, LoginActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
         finish()
     }
@@ -246,5 +315,6 @@ class ProfilActivity : AppCompatActivity() {
         val password = binding.etPassword.text.toString()
 
         binding.tvUsername.text = username
+        // In a real implementation, you would call an API to update the profile
     }
 }
