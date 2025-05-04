@@ -46,13 +46,10 @@ class RegisterActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
         initializeViews()
         setupPasswordVisibility()
-
         btnRegister.foreground = getRippleDrawable(getColor(R.color.teal))
         btnRegister.setOnClickListener { validateAndRegister() }
-
         setupButtonWithAnimation(findViewById(R.id.tvSignIn), LoginActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnBack), SparseScreenActivity::class.java)
     }
@@ -95,28 +92,21 @@ class RegisterActivity : AppCompatActivity() {
         val phoneNumber = etNomorTelepon.text.toString().trim()
         val nim = etNIM.text.toString().trim()
         val password = etPassword.text.toString().trim()
-
-        // Validation checks
         if (name.isEmpty() || email.isEmpty() || prodi.isEmpty() ||
             tanggalLahir.isEmpty() || phoneNumber.isEmpty() ||
             nim.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
             return
         }
-
-        // Email validation for UGM domain
         if (!email.endsWith("@mail.ugm.ac.id") && !email.endsWith("@ugm.ac.id")) {
             Toast.makeText(this, "Please use a valid UGM email", Toast.LENGTH_SHORT).show()
             return
         }
-
-        // Validate NIM format (XX/XXXXXX/AA/XXXXX)
         val nimRegex = "^\\d{2}/\\d{6}/[A-Za-z]{2}/\\d{5}$".toRegex()
         if (!nimRegex.matches(nim)) {
             Toast.makeText(this, "NIM format should be XX/XXXXXX/AA/XXXXX", Toast.LENGTH_SHORT).show()
             return
         }
-
         val registerRequest = RegisterRequest(
             name = name,
             email = email,
@@ -126,25 +116,18 @@ class RegisterActivity : AppCompatActivity() {
             nim = nim,
             password = password
         )
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = ApiClient.apiService.register(registerRequest)
-
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         val registerResponse = response.body()
                         println("REGISTER SUCCESS: ${registerResponse?.message}")
-
-                        // Save token if available
                         if (registerResponse?.token != null) {
                             saveAuthToken(registerResponse.token)
                         }
-
                         Toast.makeText(this@RegisterActivity,
                             "Registration successful", Toast.LENGTH_SHORT).show()
-
-                        // Navigate to MainActivity
                         navigateToMainActivity()
                     } else {
                         val errorMsg = try {
@@ -172,18 +155,12 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun saveAuthToken(token: String) {
-        val sharedPreferences = getSharedPreferences("GamaPulsePrefs", MODE_PRIVATE)
+        val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
         with(sharedPreferences.edit()) {
-            putString("auth_token", token)
+            putString("token", token)
             apply()
         }
     }
-
-//    private fun navigateToLogin() {
-//        val intent = Intent(this, LoginActivity::class.java)
-//        startActivity(intent)
-//        finish()
-//    }
 
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {

@@ -22,12 +22,12 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import android.util.Log
 
 class ProfilActivity : AppCompatActivity() {
     private lateinit var binding: ActivityProfilBinding
     private val calendar = Calendar.getInstance()
     private var isEditMode = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = Color.WHITE
@@ -36,7 +36,6 @@ class ProfilActivity : AppCompatActivity() {
         }
         binding = ActivityProfilBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
         loadProfileFromApi()
         setupBackButton()
         setupEditButton()
@@ -45,7 +44,6 @@ class ProfilActivity : AppCompatActivity() {
     }
 
     private fun getAuthToken(): String? {
-//        return "2|obe8R2DYU9pitzFyQy51ZzXIlU66P7dEWQrn00LL57578c10"
         val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
         return sharedPreferences.getString("token", null)
     }
@@ -57,13 +55,10 @@ class ProfilActivity : AppCompatActivity() {
             navigateToLoginActivity()
             return
         }
-
         val authToken = "Bearer $token"
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = ApiClient.apiService.getProfile(authToken)
-
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         val profileData = response.body()
@@ -93,7 +88,6 @@ class ProfilActivity : AppCompatActivity() {
     private fun updateUIWithProfileData(profileData: ProfileResponse) {
         val user = profileData.user
         val mahasiswa = profileData.mahasiswa
-
         binding.tvUsername.text = user.name
         binding.etUsername.setText(user.name)
         binding.etEmail.setText(user.email)
@@ -121,17 +115,16 @@ class ProfilActivity : AppCompatActivity() {
                 binding.btnUpdateProfile.text = "Batal"
                 binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.red))
                 enableEditMode(true)
-                binding.btnLogOut.visibility = View.GONE // Hide logout button
+                binding.btnLogOut.visibility = View.GONE
             } else {
                 isEditMode = false
                 binding.btnUpdateProfile.text = "Ubah Profile"
                 binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
                 enableEditMode(false)
                 loadProfileFromApi()
-                binding.btnLogOut.visibility = View.VISIBLE // Show logout button
+                binding.btnLogOut.visibility = View.VISIBLE
             }
         }
-
         binding.btnSave.setOnClickListener {
             showSaveConfirmation()
         }
@@ -147,29 +140,72 @@ class ProfilActivity : AppCompatActivity() {
                 .showCancelButton(true)
                 .setConfirmClickListener { sDialog ->
                     sDialog.dismissWithAnimation()
-
-                    // Clear token when logging out
-                    clearAuthToken()
-
-                    val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
-                        .setTitleText("Berhasil!")
-                        .setContentText("Anda telah berhasil logout.")
-                        .setConfirmClickListener { it ->
-                            it.dismissWithAnimation()
-                            navigateToLoginActivity()
-                        }
-
-                    successDialog.show()
-                    styleConfirmButton(successDialog)
+                    val loadingDialog = SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE)
+                        .setTitleText("Proses Logout")
+                        .setContentText("Mohon tunggu...")
+                    loadingDialog.show()
+                    logoutFromApi(loadingDialog)
                 }
                 .setCancelClickListener { sDialog ->
                     sDialog.dismissWithAnimation()
                 }
-
             dialog.show()
             styleAlertButtons(dialog)
         }
     }
+
+    private fun logoutFromApi(loadingDialog: SweetAlertDialog) {
+        val token = getAuthToken()
+        if (token == null) {
+            performLocalLogout()
+            loadingDialog.dismissWithAnimation()
+            return
+        }
+        val authToken = "Bearer $token"
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.logout(authToken)
+                withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
+                    if (response.isSuccessful) {
+                        performLocalLogout()
+                    } else {
+                        Toast.makeText(
+                            this@ProfilActivity,
+                            "Logout failed on server but logged out locally",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        performLocalLogout()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
+                    Log.e("LogoutAPI", "Error during logout", e)
+                    Toast.makeText(
+                        this@ProfilActivity,
+                        "Error: ${e.message}, logged out locally",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    performLocalLogout()
+                }
+            }
+        }
+    }
+
+    private fun performLocalLogout() {
+        clearAuthToken()
+        val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
+            .setTitleText("Berhasil!")
+            .setContentText("Anda telah berhasil logout.")
+            .setConfirmClickListener { it ->
+                it.dismissWithAnimation()
+                navigateToLoginActivity()
+            }
+        successDialog.show()
+        styleConfirmButton(successDialog)
+    }
+
 
     private fun clearAuthToken() {
         val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
@@ -193,7 +229,6 @@ class ProfilActivity : AppCompatActivity() {
             .setConfirmClickListener { sDialog ->
                 saveUserData()
                 sDialog.dismissWithAnimation()
-
                 val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
                     .setTitleText("Berhasil!")
                     .setContentText("Profil berhasil diperbarui")
@@ -203,16 +238,14 @@ class ProfilActivity : AppCompatActivity() {
                         binding.btnUpdateProfile.text = "Ubah Profile"
                         binding.btnUpdateProfile.setBackgroundColor(ContextCompat.getColor(this, R.color.blue))
                         enableEditMode(false)
-                        binding.btnLogOut.visibility = View.VISIBLE // Show logout button
+                        binding.btnLogOut.visibility = View.VISIBLE
                     }
-
                 successDialog.show()
                 styleConfirmButton(successDialog)
             }
             .setCancelClickListener { sDialog ->
                 sDialog.dismissWithAnimation()
             }
-
         dialog.show()
         styleAlertButtons(dialog)
     }
@@ -220,7 +253,6 @@ class ProfilActivity : AppCompatActivity() {
     private fun styleAlertButtons(dialog: SweetAlertDialog) {
         val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
         val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-
         cancelButton.apply {
             background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
             setTextColor(Color.WHITE)
@@ -230,7 +262,6 @@ class ProfilActivity : AppCompatActivity() {
             ).toInt()
             backgroundTintList = null
         }
-
         confirmButton.apply {
             background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
             setTextColor(Color.WHITE)
@@ -261,7 +292,6 @@ class ProfilActivity : AppCompatActivity() {
         binding.etNIM.isEnabled = false
         binding.etDob.isEnabled = enabled
         binding.etPhone.isEnabled = enabled
-
         val visibility = if (enabled) View.VISIBLE else View.GONE
         binding.passwordLayout.visibility = visibility
         binding.btnSave.visibility = visibility
@@ -275,13 +305,11 @@ class ProfilActivity : AppCompatActivity() {
             calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
             updateDateInView()
         }
-
         binding.etDob.setOnClickListener {
             if (isEditMode) {
                 showDatePicker(dateSetListener)
             }
         }
-
         binding.dobLayout.setEndIconOnClickListener {
             if (isEditMode) {
                 showDatePicker(dateSetListener)

@@ -28,4 +28,7 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: StoreMoodRequest
     ): Response<ResponseBody>
+
+    @POST("api/logout")
+    suspend fun logout(@Header("Authorization") token: String): Response<ResponseBody>
 }

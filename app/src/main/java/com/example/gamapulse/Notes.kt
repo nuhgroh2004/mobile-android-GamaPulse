@@ -149,20 +149,15 @@ class Notes : AppCompatActivity() {
             Toast.makeText(this, "Authentication error. Please login again.", Toast.LENGTH_SHORT).show()
             return
         }
-
-        // Map local mood names to backend-expected mood names
         val mappedEmotion = when (emotion) {
             "Biasa" -> "Biasa saja"
             "Bahagia" -> "Senang"
-            else -> emotion // Keep "Marah" and "Sedih" as they are
+            else -> emotion
         }
 
         val validIntensity = if (intensity.isEmpty() || intensity == "0") "1" else intensity
-
         val authToken = "Bearer $token"
         val request = StoreMoodRequest(mappedEmotion, validIntensity, notes)
-
-        // Log the request for debugging
         Log.d("MoodAPI", "Sending mood request: Original emotion: $emotion, Mapped to: $mappedEmotion, intensity: $validIntensity, notes: $notes")
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -171,7 +166,6 @@ class Notes : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Log.d("MoodAPI", "Mood saved successfully")
-                        // Success is already handled in the dialog
                     } else {
                         val errorBody = response.errorBody()?.string() ?: "Unknown error"
                         Log.e("MoodAPI", "Failed to save mood: $errorBody")

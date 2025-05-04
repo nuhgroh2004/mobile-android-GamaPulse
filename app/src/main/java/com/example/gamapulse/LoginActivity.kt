@@ -19,26 +19,20 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var etEmail: EditText
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
-
         etEmail = findViewById(R.id.etEmail)
         etPassword = findViewById(R.id.etPassword)
         btnLogin = findViewById(R.id.btnLogin)
-
-        // Add click listener for Sign Up text
         val tvSignUp = findViewById<TextView>(R.id.tvSignUp)
         tvSignUp.setOnClickListener {
             val intent = Intent(this, RegisterActivity::class.java)
             startActivity(intent)
         }
-
         btnLogin.setOnClickListener {
             val email = etEmail.text.toString()
             val password = etPassword.text.toString()
-
             if (email.isNotEmpty() && password.isNotEmpty()) {
                 login(email, password)
             } else {
@@ -55,7 +49,6 @@ class LoginActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         val responseBody = response.body()
                         if (responseBody != null) {
-                            // Save the token after successful login
                             saveToken(responseBody.token)
                             Toast.makeText(this@LoginActivity, "Login Successful", Toast.LENGTH_SHORT).show()
                             val intent = Intent(this@LoginActivity, MainActivity::class.java)
@@ -77,7 +70,6 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun saveToken(token: String) {
-        // Use "AuthPrefs" to match what's used in ProfilActivity
         val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.putString("token", token)
