@@ -152,6 +152,8 @@
             app:layout_constraintTop_toBottomOf="@id/etNIM" />
 
         <!-- Password Visibility Toggle -->
+
+        <!-- Register Button -->
         <ImageButton
             android:id="@+id/btnTogglePassword"
             android:layout_width="48dp"
@@ -159,12 +161,12 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Toggle Password Visibility"
             android:src="@drawable/ic_visibility_off"
-            app:tint="@color/light_blue"
             app:layout_constraintBottom_toBottomOf="@id/etPassword"
             app:layout_constraintEnd_toEndOf="@id/etPassword"
-            app:layout_constraintTop_toTopOf="@id/etPassword" />
+            app:layout_constraintTop_toTopOf="@id/etPassword"
+            app:layout_constraintVertical_bias="0.0"
+            app:tint="@color/light_blue" />
 
-        <!-- Register Button -->
         <Button
             android:id="@+id/btnRegister"
             android:layout_width="0dp"

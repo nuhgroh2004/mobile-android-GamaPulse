@@ -6,12 +6,14 @@ import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.model.RegisterResponse
 import com.example.gamapulse.model.StoreMoodRequest
+import com.example.gamapulse.model.UpdateProfileRequest
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface ApiService {
     @POST("api/login")
@@ -22,6 +24,12 @@ interface ApiService {
 
     @GET("api/mahasiswa/profil")
     suspend fun getProfile(@Header("Authorization") token: String): Response<ProfileResponse>
+
+    @PUT("api/mahasiswa/update-profil")
+    suspend fun updateProfile(
+        @Header("Authorization") token: String,
+        @Body request: UpdateProfileRequest
+    ): Response<ResponseBody>
 
     @POST("api/mahasiswa/store-mood")
     suspend fun storeMood(
