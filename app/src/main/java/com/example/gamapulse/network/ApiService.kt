@@ -6,6 +6,7 @@ import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.model.RegisterResponse
 import com.example.gamapulse.model.StoreMoodRequest
+import com.example.gamapulse.model.StoreProgressRequest
 import com.example.gamapulse.model.UpdateProfileRequest
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -35,6 +36,12 @@ interface ApiService {
     suspend fun storeMood(
         @Header("Authorization") token: String,
         @Body request: StoreMoodRequest
+    ): Response<ResponseBody>
+
+    @POST("api/mahasiswa/progress/store")
+    suspend fun storeProgress(
+        @Header("Authorization") token: String,
+        @Body request: StoreProgressRequest
     ): Response<ResponseBody>
 
     @POST("api/logout")
