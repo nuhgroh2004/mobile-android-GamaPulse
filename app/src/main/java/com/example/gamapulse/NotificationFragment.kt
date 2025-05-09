@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.pedant.SweetAlert.SweetAlertDialog
+import com.example.gamapulse.model.NotificationActionRequest
 import com.example.gamapulse.model.NotificationItem
 import com.example.gamapulse.network.ApiClient
 import kotlinx.coroutines.launch
@@ -313,50 +314,256 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         }
     }
 
-    private fun showSuccessDialog(message: String) {
-        val successDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.SUCCESS_TYPE)
-            .setTitleText("Berhasil!")
-            .setContentText(message)
-            .setConfirmText("OK")
+    private fun showSuccessDialog(message: String, onDismiss: (() -> Unit)? = null) {
+        // Use standard AlertDialog instead of SweetAlertDialog
+        val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Berhasil!")
+            .setMessage(message)
+            .setPositiveButton("OK") { dialog, _ ->
+                dialog.dismiss()
+                onDismiss?.invoke()
+            }
+            .setCancelable(false)
 
-        successDialog.show()
+        val dialog = dialogBuilder.create()
+        dialog.show()
 
-        successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
-            background = resources.getDrawable(R.drawable.allert_button_ok, requireActivity().theme)
+        // Apply styling if needed
+        val positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+        positiveButton.apply {
             setTextColor(Color.WHITE)
+            setBackgroundColor(resources.getColor(R.color.white, requireActivity().theme))
             setPadding(24, 12, 24, 12)
-            minWidth = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-            ).toInt()
-            backgroundTintList = null
         }
     }
 
     private fun processAllowNotification(notification: NotificationItem) {
-        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-        if (index != -1) {
-            inboxNotifications.removeAt(index)
-            inboxAdapter.updateNotifications(inboxNotifications)
+        loadingDialog.titleText = "Mengizinkan permintaan..."
+        loadingDialog.show()
 
-            val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
-            historyNotifications.add(0, updatedNotification)
-            historyAdapter.updateNotifications(historyNotifications)
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
 
-            showSuccessDialog("Permintaan telah diizinkan")
+                if (token == null) {
+                    dismissLoadingDialogIfNeeded()
+                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    return@launch
+                }
+
+                val request = NotificationActionRequest("approve")
+                val response = ApiClient.apiService.respondToNotification(
+                    "Bearer $token",
+                    notification.id,
+                    request
+                )
+
+                // Tutup dialog terlebih dahulu dan pastikan benar-benar tertutup
+                dismissLoadingDialogIfNeeded()
+
+                if (response.isSuccessful) {
+                    // Update data sebelum UI
+                    val index = inboxNotifications.indexOfFirst { it.id == notification.id }
+                    if (index != -1) {
+                        inboxNotifications.removeAt(index)
+                        val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
+                        historyNotifications.add(0, updatedNotification)
+
+                        // Gunakan delay untuk memastikan UI dapat diperbarui dengan lancar
+                        runWithDelay {
+                            // Perbarui adapter
+                            inboxAdapter.updateNotifications(inboxNotifications)
+                            historyAdapter.updateNotifications(historyNotifications)
+
+                            // Pindah ke tab riwayat
+                            switchToHistory()
+
+                            // Tampilkan pesan sukses
+                            runWithDelay(300L) {
+                                showSuccessDialog("Permintaan telah diizinkan")
+                            }
+                        }
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                    showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                dismissLoadingDialogIfNeeded()
+                Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
+            }
         }
     }
 
     private fun processRejectNotification(notification: NotificationItem) {
-        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-        if (index != -1) {
-            inboxNotifications.removeAt(index)
-            inboxAdapter.updateNotifications(inboxNotifications)
+        // Create and show loading dialog
+        val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Menolak permintaan..."
+        loadingDialog.setCancelable(false)
+        loadingDialog.show()
 
-            val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
-            historyNotifications.add(0, updatedNotification)
-            historyAdapter.updateNotifications(historyNotifications)
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
 
-            showSuccessDialog("Permintaan telah ditolak")
+                if (token == null) {
+                    loadingDialog.dismissWithAnimation()
+                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    return@launch
+                }
+
+                val request = NotificationActionRequest("reject")
+                val response = ApiClient.apiService.respondToNotification(
+                    "Bearer $token",
+                    notification.id,
+                    request
+                )
+
+                // Make sure to dismiss with animation
+                if (loadingDialog.isShowing) {
+                    loadingDialog.dismissWithAnimation()
+                }
+
+                if (response.isSuccessful) {
+                    // Update data model
+                    val index = inboxNotifications.indexOfFirst { it.id == notification.id }
+                    if (index != -1) {
+                        // Remove from inbox
+                        inboxNotifications.removeAt(index)
+                        inboxAdapter.updateNotifications(inboxNotifications)
+
+                        // Add to history with rejected status
+                        val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
+                        historyNotifications.add(0, updatedNotification)
+                        historyAdapter.updateNotifications(historyNotifications)
+
+                        // Switch to history tab
+                        switchToHistory()
+
+                        // Show success using standard AlertDialog (not SweetAlert)
+                        val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle("Berhasil!")
+                            .setMessage("Permintaan telah ditolak")
+                            .setPositiveButton("OK", null)
+                            .setCancelable(true)
+                            .create()
+
+                        successDialog.show()
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                    showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                if (loadingDialog.isShowing) {
+                    loadingDialog.dismissWithAnimation()
+                }
+                Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
+            }
+        }
+    }
+
+    private fun dismissAllDialogs() {
+        try {
+            // Close loading dialog if showing
+            dismissLoadingDialogIfNeeded()
+
+            // Force remove any remaining SweetAlertDialog components
+            requireActivity().window.decorView.post {
+                val decorView = requireActivity().window.decorView as ViewGroup
+                removeDialogViewsRecursively(decorView)
+                decorView.invalidate()
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error dismissing dialogs: ${e.message}")
+        }
+    }
+
+    private fun removeDialogViewsRecursively(viewGroup: ViewGroup) {
+        for (i in viewGroup.childCount - 1 downTo 0) {
+            val child = viewGroup.getChildAt(i)
+
+            // Remove SweetAlertDialog views
+            if (child is ViewGroup) {
+                if (child.javaClass.name.contains("SweetAlertDialog") ||
+                    (child.tag != null && child.tag.toString().contains("sweet_alert_dialog"))) {
+                    viewGroup.removeView(child)
+                } else {
+                    removeDialogViewsRecursively(child)
+                }
+            }
+
+            // Also remove any overlay views (dim layers)
+            if (child.background != null && child.alpha < 1.0f) {
+                viewGroup.removeView(child)
+            }
+        }
+    }
+
+    private fun showStandardSuccessDialog(message: String) {
+        val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Berhasil!")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .setCancelable(true)
+
+        dialogBuilder.create().show()
+    }
+
+    private fun showStandardErrorDialog(message: String) {
+        val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Error")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .setCancelable(true)
+
+        dialogBuilder.create().show()
+    }
+
+    private fun dismissLoadingDialogIfNeeded() {
+        try {
+            if (loadingDialog.isShowing) {
+                loadingDialog.dismissWithAnimation()
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error dismissing dialog: ${e.message}")
+        }
+    }
+    private fun runWithDelay(delay: Long = 200L, action: () -> Unit) {
+        try {
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                action()
+            }, delay)
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error in delayed execution: ${e.message}", e)
+            action() // Tetap jalankan action jika terjadi error
+        }
+    }
+    private fun forceRemoveOverlays() {
+        try {
+            // Force dismiss all possible dialogs
+            dismissLoadingDialogIfNeeded()
+
+            // Get all window decorations that might be adding the overlay
+            val decorView = requireActivity().window.decorView as ViewGroup
+            for (i in 0 until decorView.childCount) {
+                val child = decorView.getChildAt(i)
+                if (child is ViewGroup && child.tag != null &&
+                    child.tag.toString().contains("sweet_alert_dialog", ignoreCase = true)) {
+                    decorView.removeView(child)
+                }
+            }
+
+            // Force a layout refresh
+            requireActivity().window.decorView.requestLayout()
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error removing overlays: ${e.message}")
         }
     }
 

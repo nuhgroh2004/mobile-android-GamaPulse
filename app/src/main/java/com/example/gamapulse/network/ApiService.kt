@@ -2,6 +2,7 @@ package com.example.gamapulse.network
 
 import com.example.gamapulse.model.LoginRequest
 import com.example.gamapulse.model.LoginResponse
+import com.example.gamapulse.model.NotificationActionRequest
 import com.example.gamapulse.model.NotificationResponse
 import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
@@ -16,6 +17,7 @@ import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Path
 
 interface ApiService {
     @POST("api/login")
@@ -49,6 +51,13 @@ interface ApiService {
     suspend fun getNotifications(
         @Header("Authorization") token: String
     ): Response<NotificationResponse>
+
+    @PUT("api/mahasiswa/notifikasi/{id}")
+    suspend fun respondToNotification(
+        @Header("Authorization") token: String,
+        @Path("id") notificationId: Int,
+        @Body request: NotificationActionRequest
+    ): Response<ResponseBody>
 
     @POST("api/logout")
     suspend fun logout(@Header("Authorization") token: String): Response<ResponseBody>
