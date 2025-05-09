@@ -2,6 +2,7 @@ package com.example.gamapulse.network
 
 import com.example.gamapulse.model.LoginRequest
 import com.example.gamapulse.model.LoginResponse
+import com.example.gamapulse.model.NotificationResponse
 import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.model.RegisterResponse
@@ -43,6 +44,11 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: StoreProgressRequest
     ): Response<ResponseBody>
+
+    @GET("api/mahasiswa/notifikasi")
+    suspend fun getNotifications(
+        @Header("Authorization") token: String
+    ): Response<NotificationResponse>
 
     @POST("api/logout")
     suspend fun logout(@Header("Authorization") token: String): Response<ResponseBody>

@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    private const val BASE_URL = "http://10.33.192.54:8080/"
+    private const val BASE_URL = "http://10.33.193.131:8080/"
     // untuk php servenya pake ini php artisan serve --host=0.0.0.0 --port=8080
     private val gson = GsonBuilder()
         .setLenient()

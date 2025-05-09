@@ -1,4 +1,6 @@
-package com.example.gamapulse
+package com.example.gamapulse.model
+
+import com.example.gamapulse.NotificationStatus
 
 data class NotificationItem(
     val id: Int,

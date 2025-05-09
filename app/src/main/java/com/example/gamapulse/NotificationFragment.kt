@@ -1,9 +1,10 @@
 package com.example.gamapulse
 
+import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -11,9 +12,13 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import cn.pedant.SweetAlert.SweetAlertDialog
+import com.example.gamapulse.model.NotificationItem
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.launch
 
 class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionListener {
 
@@ -28,6 +33,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private val historyNotifications = mutableListOf<NotificationItem>()
 
     private var isInboxActive = true
+    private lateinit var loadingDialog: SweetAlertDialog
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,8 +51,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
 
         setupProfileButton(view)
         setupTabs()
-        setupRecyclerView()
-        loadDummyData()
+        setupNotifications() // Ganti loadDummyData() dengan ini
     }
 
     private fun setupProfileButton(view: View) {
@@ -79,6 +84,114 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     .start()
             }
             .start()
+    }
+
+    private fun setupNotifications() {
+        // Setup loading dialog
+        loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Memuat notifikasi..."
+        loadingDialog.setCancelable(false)
+
+        // Setup adapters first (empty lists)
+        setupRecyclerView()
+
+        // Fetch notifications
+        fetchNotifications()
+    }
+
+    private fun fetchNotifications() {
+        loadingDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+
+                if (token == null) {
+                    loadingDialog.dismissWithAnimation()
+                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    return@launch
+                }
+
+                Log.d("NotificationFragment", "Mengambil notifikasi dengan token: ${token.take(10)}...")
+                val response = ApiClient.apiService.getNotifications("Bearer $token")
+                loadingDialog.dismissWithAnimation()
+
+                if (response.isSuccessful) {
+                    val notificationResponse = response.body()
+
+                    // Proses notifikasi belum dibaca (kotak masuk)
+                    val unreadNotifications = notificationResponse?.unread_notifications ?: emptyList()
+                    val historyNotifs = notificationResponse?.history_notifications ?: emptyList()
+
+                    Log.d("NotificationFragment", "Notifikasi belum dibaca: ${unreadNotifications.size}")
+                    Log.d("NotificationFragment", "Riwayat notifikasi: ${historyNotifs.size}")
+
+                    // Konversi data API ke model UI
+                    val inbox = unreadNotifications.map { notification ->
+                        NotificationItem(
+                            id = notification.notification_id,
+                            sender = notification.name,
+                            message = "${notification.name} ingin melihat laporan Anda",
+                            email = notification.email,
+                            status = NotificationStatus.PENDING
+                        )
+                    }
+
+                    val history = historyNotifs.map { notification ->
+                        val status = when (notification.request_status.lowercase()) {
+                            "accepted", "allowed" -> NotificationStatus.ALLOWED
+                            "rejected" -> NotificationStatus.REJECTED
+                            else -> NotificationStatus.PENDING
+                        }
+
+                        NotificationItem(
+                            id = notification.notification_id,
+                            sender = notification.name,
+                            message = "${notification.name} ingin melihat laporan Anda",
+                            email = notification.email,
+                            status = status
+                        )
+                    }
+
+                    // Update adapters
+                    inboxNotifications.clear()
+                    inboxNotifications.addAll(inbox)
+                    inboxAdapter.updateNotifications(inboxNotifications)
+
+                    historyNotifications.clear()
+                    historyNotifications.addAll(history)
+                    historyAdapter.updateNotifications(historyNotifications)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                    showErrorDialog("Gagal memuat notifikasi: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                loadingDialog.dismissWithAnimation()
+                Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
+            }
+        }
+    }
+
+    private fun showErrorDialog(message: String) {
+        SweetAlertDialog(requireContext(), SweetAlertDialog.ERROR_TYPE)
+            .setTitleText("Error")
+            .setContentText(message)
+            .setConfirmText("OK")
+            .setConfirmClickListener { it.dismissWithAnimation() }
+            .show()
+    }
+
+    private fun refreshNotifications() {
+        fetchNotifications()
+    }
+
+    // Tambahkan fungsi ini ke onResume untuk memuat notifikasi setiap kali fragment muncul
+    override fun onResume() {
+        super.onResume()
+        refreshNotifications()
     }
 
     private fun setupTabs() {
