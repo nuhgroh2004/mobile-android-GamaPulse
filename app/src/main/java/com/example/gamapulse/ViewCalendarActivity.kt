@@ -3,6 +3,7 @@ package com.example.gamapulse
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -14,11 +15,15 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
+import cn.pedant.SweetAlert.SweetAlertDialog
+import com.example.gamapulse.model.MoodData
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.Random
 
 class ViewCalendarActivity : AppCompatActivity() {
     private lateinit var calendarGrid: GridView
@@ -27,12 +32,6 @@ class ViewCalendarActivity : AppCompatActivity() {
     private lateinit var btnNextMonth: ImageButton
     private val calendar = Calendar.getInstance()
     private lateinit var adapter: CalendarAdapter
-    private val moodList = listOf(
-        R.drawable.icon_mood_bahagia,
-        R.drawable.icon_mood_marah,
-        R.drawable.icon_mood_sedih,
-        R.drawable.icon_mood_biasa
-    )
     private val moodData = HashMap<String, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,7 +63,6 @@ class ViewCalendarActivity : AppCompatActivity() {
     }
 
     private fun initializeCalendar() {
-        generateRandomMoodData()
         adapter = CalendarAdapter(this, calendar, moodData)
         calendarGrid.adapter = adapter
         calendarGrid.setOnItemClickListener { _, _, position, _ ->
@@ -76,17 +74,85 @@ class ViewCalendarActivity : AppCompatActivity() {
         updateCalendar()
     }
 
-    private fun generateRandomMoodData() {
-        val random = Random()
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val monthCalendar = calendar.clone() as Calendar
-        monthCalendar.set(Calendar.DAY_OF_MONTH, 1)
-        val daysInMonth = monthCalendar.getActualMaximum(Calendar.DAY_OF_MONTH)
-        for (day in 1..daysInMonth) {
-            monthCalendar.set(Calendar.DAY_OF_MONTH, day)
-            val dateKey = dateFormat.format(monthCalendar.time)
-            moodData[dateKey] = moodList[random.nextInt(moodList.size)].toString()
+    private fun fetchMoodDataForMonth() {
+        val month = calendar.get(Calendar.MONTH) + 1 // Calendar months are 0-based
+        val year = calendar.get(Calendar.YEAR)
+
+        // Create loading dialog
+        val loadingDialog = SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Memuat data kalender..."
+        loadingDialog.setCancelable(false)
+        loadingDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+
+                if (token == null) {
+                    loadingDialog.dismissWithAnimation()
+                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    return@launch
+                }
+
+                val response = ApiClient.apiService.getCalendarMoods(
+                    "Bearer $token",
+                    month,
+                    year
+                )
+
+                // Always dismiss loading dialog when done
+                loadingDialog.dismissWithAnimation()
+
+                if (response.isSuccessful) {
+                    response.body()?.let { calendarResponse ->
+                        processMoodData(calendarResponse.data)
+                    }
+                } else {
+                    Log.e("ViewCalendarActivity", "Error: ${response.code()} - ${response.message()}")
+                    showErrorDialog("Gagal memuat data: ${response.message()}")
+                }
+            } catch (e: Exception) {
+                loadingDialog.dismissWithAnimation()
+                Log.e("ViewCalendarActivity", "Exception: ${e.message}", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
+            }
         }
+    }
+
+    private fun processMoodData(apiMoodData: Map<String, MoodData>) {
+        moodData.clear()
+
+        // Convert day-based API data to date-formatted keys
+        for ((day, moodData) in apiMoodData) {
+            val cal = calendar.clone() as Calendar
+            cal.set(Calendar.DAY_OF_MONTH, day.toInt())
+
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val dateKey = dateFormat.format(cal.time)
+
+            // Map mood_level to the corresponding drawable resource
+            // 1=Marah, 2=Sedih, 3=Biasa saja, 4=Senang
+            val moodDrawableId = when (moodData.mood_level) {
+                1 -> R.drawable.icon_mood_marah
+                2 -> R.drawable.icon_mood_sedih
+                3 -> R.drawable.icon_mood_biasa
+                4 -> R.drawable.icon_mood_bahagia
+                else -> R.drawable.icon_mood_biasa
+            }
+
+            this.moodData[dateKey] = moodDrawableId.toString()
+        }
+
+        // Update the calendar display with the new data
+        adapter.notifyDataSetChanged()
+    }
+
+    private fun showErrorDialog(message: String) {
+        SweetAlertDialog(this, SweetAlertDialog.ERROR_TYPE)
+            .setTitleText("Error")
+            .setContentText(message)
+            .show()
     }
 
     private fun isInCurrentMonth(date: Date): Boolean {
@@ -100,6 +166,7 @@ class ViewCalendarActivity : AppCompatActivity() {
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale("id"))
         tvMonthYear.text = dateFormat.format(calendar.time)
         adapter.updateCalendar(calendar)
+        fetchMoodDataForMonth() // Fetch data for the newly selected month
     }
 
     private fun openEditMoodActivity(date: Date) {

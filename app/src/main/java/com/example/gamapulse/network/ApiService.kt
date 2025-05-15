@@ -1,5 +1,6 @@
 package com.example.gamapulse.network
 
+import com.example.gamapulse.model.CalendarResponse
 import com.example.gamapulse.model.LoginRequest
 import com.example.gamapulse.model.LoginResponse
 import com.example.gamapulse.model.NotificationActionRequest
@@ -18,6 +19,7 @@ import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     @POST("api/login")
@@ -58,6 +60,13 @@ interface ApiService {
         @Path("id") notificationId: Int,
         @Body request: NotificationActionRequest
     ): Response<ResponseBody>
+
+    @GET("api/mahasiswa/calendar")
+    suspend fun getCalendarMoods(
+        @Header("Authorization") token: String,
+        @Query("month") month: Int,
+        @Query("year") year: Int
+    ): Response<CalendarResponse>
 
     @POST("api/logout")
     suspend fun logout(@Header("Authorization") token: String): Response<ResponseBody>
