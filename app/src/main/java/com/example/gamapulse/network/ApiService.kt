@@ -8,6 +8,7 @@ import com.example.gamapulse.model.NotificationResponse
 import com.example.gamapulse.model.ProfileResponse
 import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.model.RegisterResponse
+import com.example.gamapulse.model.ReportResponse
 import com.example.gamapulse.model.StoreMoodRequest
 import com.example.gamapulse.model.StoreProgressRequest
 import com.example.gamapulse.model.UpdateProfileRequest
@@ -60,6 +61,13 @@ interface ApiService {
         @Path("id") notificationId: Int,
         @Body request: NotificationActionRequest
     ): Response<ResponseBody>
+
+    @GET("api/mahasiswa/report")
+    suspend fun getReport(
+        @Header("Authorization") token: String,
+        @Query("month") month: Int,
+        @Query("year") year: Int
+    ): Response<ReportResponse>
 
     @GET("api/mahasiswa/calendar")
     suspend fun getCalendarMoods(

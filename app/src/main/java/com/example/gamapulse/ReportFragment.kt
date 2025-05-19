@@ -1,7 +1,11 @@
 package com.example.gamapulse
 
+import android.app.AlertDialog
+import android.app.ProgressDialog
+import android.content.Context.MODE_PRIVATE
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +16,10 @@ import android.widget.ImageView
 import android.widget.Spinner
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
+import com.example.gamapulse.model.MoodInfo
+import com.example.gamapulse.model.ProgressInfo
+import com.example.gamapulse.network.ApiClient
 import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
@@ -22,6 +30,8 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class ReportFragment : Fragment() {
     private lateinit var moodBarChart: BarChart
@@ -34,6 +44,12 @@ class ReportFragment : Fragment() {
     private lateinit var tabTaskCompletion: TextView
     private lateinit var chartTitle: TextView
     private var currentTab = 0
+
+    // Initialize with empty collections to avoid null reference exceptions
+    private val moodData = mutableMapOf<String, MoodInfo>()
+    private val progressData = mutableMapOf<String, ProgressInfo>()
+    private val averageMoodData = mutableMapOf<String, Double>()
+    private val dayLabels = mutableListOf<Int>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -61,6 +77,9 @@ class ReportFragment : Fragment() {
         setupMoodBarChart()
         setupTaskLineChart()
         setupBarChart()
+
+        // Fetch initial data
+        fetchReportData()
     }
 
     private fun setupTabs() {
@@ -91,6 +110,7 @@ class ReportFragment : Fragment() {
             moodBarChart.visibility = View.VISIBLE
             taskLineChart.visibility = View.GONE
             barChart.visibility = View.VISIBLE
+            view?.findViewById<View>(R.id.mood_distribution_card)?.visibility = View.VISIBLE
         } else {
             tabMoodTracker.setBackgroundResource(R.drawable.report_unselected_tab_background)
             tabTaskCompletion.setBackgroundResource(R.drawable.report_selected_tab_background)
@@ -98,6 +118,7 @@ class ReportFragment : Fragment() {
             moodBarChart.visibility = View.GONE
             taskLineChart.visibility = View.VISIBLE
             barChart.visibility = View.GONE
+            view?.findViewById<View>(R.id.mood_distribution_card)?.visibility = View.GONE
         }
     }
 
@@ -120,7 +141,9 @@ class ReportFragment : Fragment() {
         ).apply {
             setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         }
-        spinnerMonth.setSelection(10)
+        // Set current month
+        val currentMonth = Calendar.getInstance().get(Calendar.MONTH)
+        spinnerMonth.setSelection(currentMonth)
 
         val weeks = arrayOf("Minggu ke-1", "Minggu ke-2", "Minggu ke-3", "Minggu ke-4")
         spinnerWeek.adapter = ArrayAdapter(
@@ -140,7 +163,7 @@ class ReportFragment : Fragment() {
                 id: Long
             ) {
                 spinnerWeek.visibility = if (position == 0) View.VISIBLE else View.GONE
-                updateCharts()
+                fetchReportData()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -153,7 +176,7 @@ class ReportFragment : Fragment() {
                 position: Int,
                 id: Long
             ) {
-                updateCharts()
+                fetchReportData()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -166,11 +189,160 @@ class ReportFragment : Fragment() {
                 position: Int,
                 id: Long
             ) {
-                updateCharts()
+                fetchReportData()
             }
 
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
+    }
+
+    private fun fetchReportData() {
+        val selectedMonth = spinnerMonth.selectedItemPosition + 1
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR)
+        val isWeekly = spinnerTimePeriod.selectedItemPosition == 0
+        val selectedWeek = if (isWeekly) spinnerWeek.selectedItemPosition + 1 else 0
+
+        val loadingDialog = ProgressDialog(requireContext()).apply {
+            setMessage("Memuat data laporan...")
+            setCancelable(false)
+            show()
+        }
+
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+
+                if (token == null) {
+                    loadingDialog.dismiss()
+                    showErrorDialog("Session expired, please login again")
+                    return@launch
+                }
+
+                val authToken = "Bearer $token"
+                val response = ApiClient.apiService.getReport(authToken, selectedMonth, currentYear)
+
+                loadingDialog.dismiss()
+
+                if (response.isSuccessful) {
+                    val reportResponse = response.body()
+
+                    if (reportResponse != null && reportResponse.success) {
+                        // Clear existing data
+                        moodData.clear()
+                        progressData.clear()
+                        averageMoodData.clear()
+                        dayLabels.clear()
+
+                        // Process mood and progress data
+                        reportResponse.chartData.mood?.let { moodData.putAll(it) }
+                        reportResponse.chartData.progress?.let { progressData.putAll(it) }
+
+                        // Process average mood data - make sure to handle it explicitly
+                        reportResponse.chartData.averageMood?.let { avgMoodMap ->
+                            Log.d("ReportFragment", "Raw averageMood data: $avgMoodMap")
+                            // Only include numeric keys (1-4) and filter out "unknown"
+                            for ((key, value) in avgMoodMap) {
+                                if (key != "unknown" && key.toIntOrNull() != null) {
+                                    averageMoodData[key] = value
+                                    Log.d("ReportFragment", "Added mood $key: $value to averageMoodData")
+                                }
+                            }
+                        }
+
+                        Log.d("ReportFragment", "Final averageMoodData: $averageMoodData")
+
+                        // Create day labels
+                        if (isWeekly) {
+                            createWeekDayLabels(selectedWeek)
+                            // Filter data for selected week
+                            filterDataForWeek(selectedWeek)
+                        } else {
+                            createMonthDayLabels(selectedMonth, currentYear)
+                        }
+
+                        // Update charts with new data
+                        updateCharts()
+                    } else {
+                        val errorMsg = "Failed to load report data"
+                        showErrorDialog(errorMsg)
+                    }
+                } else {
+                    val errorMessage = response.errorBody()?.string() ?: "Unknown error"
+                    Log.e("ReportFragment", "API Error: $errorMessage")
+                    showErrorDialog("Error: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                loadingDialog.dismiss()
+                Log.e("ReportFragment", "Exception fetching report data", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
+            }
+        }
+    }
+
+    private fun createWeekDayLabels(weekNumber: Int) {
+        // Calculate day range for the selected week (1-7, 8-14, 15-21, 22-28/29/30/31)
+        val startDay = (weekNumber - 1) * 7 + 1
+        val endDay = when (weekNumber) {
+            4 -> {
+                // Get actual days in month
+                val cal = Calendar.getInstance()
+                cal.set(Calendar.MONTH, spinnerMonth.selectedItemPosition)
+                cal.set(Calendar.YEAR, Calendar.getInstance().get(Calendar.YEAR))
+                cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+            }
+            else -> weekNumber * 7
+        }
+
+        // Create complete set of day labels for the week
+        dayLabels.clear()
+        for (day in startDay..endDay) {
+            dayLabels.add(day)
+        }
+    }
+
+    private fun createMonthDayLabels(month: Int, year: Int) {
+        val cal = Calendar.getInstance()
+        cal.set(Calendar.MONTH, month - 1) // Calendar.MONTH is 0-based
+        cal.set(Calendar.YEAR, year)
+        val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
+
+        dayLabels.clear()
+        for (day in 1..daysInMonth) {
+            dayLabels.add(day)
+        }
+    }
+
+    private fun filterDataForWeek(weekNumber: Int) {
+        // Calculate day range for the selected week (1-7, 8-14, 15-21, 22-31)
+        val startDay = (weekNumber - 1) * 7 + 1
+        val endDay = if (weekNumber == 4) 31 else weekNumber * 7
+
+        // Filter labels and corresponding data
+        val filteredLabels = dayLabels.filter { it in startDay..endDay }
+        val filteredDays = filteredLabels.map { it.toString() }
+
+        // Keep only data for days within selected week
+        val filteredMoodData = moodData.filterKeys { it in filteredDays }
+        val filteredProgressData = progressData.filterKeys { it in filteredDays }
+
+        // Update data collections
+        dayLabels.clear()
+        dayLabels.addAll(filteredLabels)
+
+        moodData.clear()
+        moodData.putAll(filteredMoodData)
+
+        progressData.clear()
+        progressData.putAll(filteredProgressData)
+    }
+
+    private fun showErrorDialog(message: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Error")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun setupMoodBarChart() {
@@ -185,17 +357,26 @@ class ReportFragment : Fragment() {
 
             xAxis.apply {
                 position = XAxis.XAxisPosition.BOTTOM
-                setDrawGridLines(false)
                 granularity = 1f
-                labelRotationAngle = -45f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
             }
 
             axisRight.isEnabled = false
             axisLeft.apply {
-                setDrawGridLines(true)
                 axisMinimum = 0f
-                axisMaximum = 10f
+                axisMaximum = 5f
+                granularity = 1f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
             }
+
+            // Remove value labels
+            setDrawValueAboveBar(false)
+
+            // Improve appearance
+            animateY(1000)
+            extraBottomOffset = 10f
         }
     }
 
@@ -211,92 +392,115 @@ class ReportFragment : Fragment() {
 
             xAxis.apply {
                 position = XAxis.XAxisPosition.BOTTOM
-                setDrawGridLines(false)
                 granularity = 1f
-                labelRotationAngle = -45f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
             }
 
             axisRight.isEnabled = false
             axisLeft.apply {
-                setDrawGridLines(true)
                 axisMinimum = 0f
+                axisMaximum = 100f
+                granularity = 20f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
+                valueFormatter = PercentFormatter()
             }
+
+            // Improve appearance
+            animateX(1000)
+            extraBottomOffset = 10f
         }
     }
 
     private fun setupBarChart() {
         with(barChart) {
             description.isEnabled = false
-            legend.isEnabled = false
+            legend.isEnabled = true
             setTouchEnabled(true)
             isDragEnabled = true
             setScaleEnabled(true)
-            setPinchZoom(false)
+            setPinchZoom(true)
             setDrawGridBackground(false)
 
             xAxis.apply {
                 position = XAxis.XAxisPosition.BOTTOM
-                setDrawGridLines(false)
                 granularity = 1f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
             }
 
             axisRight.isEnabled = false
             axisLeft.apply {
-                setDrawGridLines(true)
                 axisMinimum = 0f
-                axisMaximum = 10f
+                axisMaximum = 100f
+                granularity = 20f
+                setDrawGridLines(false)
+                setDrawAxisLine(true)
+                valueFormatter = PercentFormatter()
             }
+
+            // Remove value labels
+            setDrawValueAboveBar(false)
+
+            // Improve appearance
+            animateY(1000)
+            extraBottomOffset = 10f
         }
 
-        val moodLabels = listOf("Marah", "Sedih", "Bahagia", "Biasa")
+        val moodLabels = listOf("Marah", "Sedih", "Bahagia", "Biasa saja")
         barChart.xAxis.valueFormatter = IndexAxisValueFormatter(moodLabels)
-        updateMoodBarChart()
     }
 
     private fun updateCharts() {
         if (currentTab == 0) {
-            if (spinnerTimePeriod.selectedItemPosition == 0) {
-                updateMoodWeeklyBarChart()
-            } else {
-                updateMoodMonthlyBarChart()
-            }
-            updateMoodBarChart()
+            updateMoodChart()
+            updateAverageMoodChart()
         } else {
-            if (spinnerTimePeriod.selectedItemPosition == 0) {
-                updateTaskWeeklyChart()
-            } else {
-                updateTaskMonthlyChart()
-            }
+            updateProgressChart()
         }
     }
 
-    private fun updateMoodWeeklyBarChart() {
+    private fun updateMoodChart() {
+        if (dayLabels.isEmpty()) {
+            moodBarChart.data = null
+            moodBarChart.invalidate()
+            return
+        }
+
         val entries = ArrayList<BarEntry>()
-        val days = 7
         val colors = ArrayList<Int>()
 
-        for (i in 0 until days) {
-            val moodValue = (3 + Math.random() * 7).toFloat()
-            entries.add(BarEntry(i.toFloat(), moodValue))
+        // Create entries for all days, with zero height for days without data
+        for (i in dayLabels.indices) {
+            val day = dayLabels[i]
+            val dayKey = day.toString()
 
-            val color = when {
-                moodValue < 4 -> Color.rgb(255, 87, 34)
-                moodValue < 5 -> Color.rgb(96, 125, 139)
-                moodValue < 7 -> Color.rgb(0, 188, 212)
-                else -> Color.rgb(76, 175, 80)
+            if (moodData.containsKey(dayKey) && moodData[dayKey]?.mood_level != null) {
+                val moodLevel = moodData[dayKey]?.mood_level ?: 0
+                entries.add(BarEntry(i.toFloat(), moodLevel.toFloat()))
+
+                val color = when (moodLevel) {
+                    1 -> Color.rgb(255, 87, 34)  // Marah
+                    2 -> Color.rgb(96, 125, 139) // Sedih
+                    3 -> Color.rgb(76, 175, 80)  // Bahagia
+                    4 -> Color.rgb(0, 188, 212)  // Biasa saja
+                    else -> Color.GRAY
+                }
+                colors.add(color)
+            } else {
+                entries.add(BarEntry(i.toFloat(), 0f))
+                colors.add(Color.GRAY)
             }
-            colors.add(color)
         }
 
         val dataSet = BarDataSet(entries, "Mood").apply {
             this.colors = colors
-            setDrawValues(true)
-            valueTextSize = 10f
-            valueTextColor = Color.BLACK
+            setDrawValues(false)  // Don't show the numeric values
         }
 
-        val dayLabels = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Ming")
-        moodBarChart.xAxis.valueFormatter = IndexAxisValueFormatter(dayLabels)
+        moodBarChart.xAxis.valueFormatter = IndexAxisValueFormatter(dayLabels.map { it.toString() })
+        moodBarChart.xAxis.labelCount = dayLabels.size
 
         val barData = BarData(dataSet)
         barData.barWidth = 0.6f
@@ -304,141 +508,112 @@ class ReportFragment : Fragment() {
         moodBarChart.invalidate()
     }
 
-    private fun updateMoodMonthlyBarChart() {
-        val entries = ArrayList<BarEntry>()
-        val days = 30
+    private fun updateProgressChart() {
+        if (dayLabels.isEmpty()) {
+            taskLineChart.data = null
+            taskLineChart.invalidate()
+            return
+        }
+
+        val targetEntries = ArrayList<Entry>()
+        val actualEntries = ArrayList<Entry>()
+
+        // Create entries for all days, with zero values for days without data
+        for (i in dayLabels.indices) {
+            val day = dayLabels[i]
+            val dayKey = day.toString()
+
+            if (progressData.containsKey(dayKey)) {
+                val progressInfo = progressData[dayKey]
+                targetEntries.add(Entry(i.toFloat(), (progressInfo?.expected_target ?: 0.0).toFloat()))
+                actualEntries.add(Entry(i.toFloat(), (progressInfo?.actual_target ?: 0.0).toFloat()))
+            } else {
+                targetEntries.add(Entry(i.toFloat(), 0f))
+                actualEntries.add(Entry(i.toFloat(), 0f))
+            }
+        }
+
+        val targetDataSet = LineDataSet(targetEntries, "Target").apply {
+            color = Color.rgb(76, 175, 80)
+            setCircleColor(Color.rgb(76, 175, 80))
+            setDrawValues(false)
+            lineWidth = 2.5f
+            circleRadius = 4f
+        }
+
+        val actualDataSet = LineDataSet(actualEntries, "Realisasi").apply {
+            color = Color.rgb(255, 152, 0)
+            setCircleColor(Color.rgb(255, 152, 0))
+            setDrawValues(false)
+            lineWidth = 2.5f
+            circleRadius = 4f
+        }
+
+        taskLineChart.xAxis.valueFormatter = IndexAxisValueFormatter(dayLabels.map { it.toString() })
+        taskLineChart.xAxis.labelCount = dayLabels.size
+
+        val lineData = LineData(targetDataSet, actualDataSet)
+        taskLineChart.data = lineData
+        taskLineChart.invalidate()
+    }
+
+    private fun updateAverageMoodChart() {
+        Log.d("ReportFragment", "Updating average mood chart with data: $averageMoodData")
+
+        // Ensure the chart card is visible
+        view?.findViewById<View>(R.id.mood_distribution_card)?.visibility = View.VISIBLE
+
+        if (averageMoodData.isEmpty()) {
+            Log.w("ReportFragment", "No average mood data available")
+            barChart.setNoDataText("Tidak ada data mood rata-rata")
+            barChart.data = null
+            barChart.invalidate()
+            return
+        }
+
+        val barEntries = ArrayList<BarEntry>()
         val colors = ArrayList<Int>()
 
-        for (i in 0 until days) {
-            val trendFactor = Math.sin(i * 0.3) * 2
-            val moodValue = (5 + trendFactor + Math.random() * 2).toFloat()
-            entries.add(BarEntry(i.toFloat(), moodValue))
+        // Map mood levels to positions
+        val moodLabels = listOf("Marah", "Sedih", "Bahagia", "Biasa saja")
 
-            val color = when {
-                moodValue < 4 -> Color.rgb(255, 87, 34)
-                moodValue < 5 -> Color.rgb(96, 125, 139)
-                moodValue < 7 -> Color.rgb(0, 188, 212)
-                else -> Color.rgb(76, 175, 80)
+        for (moodLevel in 1..4) {
+            val moodKey = moodLevel.toString()
+            val value = averageMoodData[moodKey] ?: 0.0
+            Log.d("ReportFragment", "Adding mood $moodKey with value: $value")
+            barEntries.add(BarEntry((moodLevel - 1).toFloat(), value.toFloat()))
+
+            val color = when (moodLevel) {
+                1 -> Color.rgb(255, 87, 34)  // Marah
+                2 -> Color.rgb(96, 125, 139) // Sedih
+                3 -> Color.rgb(76, 175, 80)  // Bahagia
+                4 -> Color.rgb(0, 188, 212)  // Biasa saja
+                else -> Color.GRAY
             }
             colors.add(color)
         }
 
-        val dataSet = BarDataSet(entries, "Mood").apply {
+        val barDataSet = BarDataSet(barEntries, "Persentase Mood").apply {
             this.colors = colors
-            setDrawValues(false)
-        }
-
-        val weekLabels = listOf("W1", "W2", "W3", "W4", "W5")
-        moodBarChart.xAxis.valueFormatter = IndexAxisValueFormatter(weekLabels)
-        moodBarChart.xAxis.labelCount = 5
-
-        val barData = BarData(dataSet)
-        barData.barWidth = 0.2f
-        moodBarChart.data = barData
-        moodBarChart.invalidate()
-    }
-
-    private fun updateTaskWeeklyChart() {
-        val targetEntries = ArrayList<Entry>()
-        val actualEntries = ArrayList<Entry>()
-        val days = 7
-
-        for (i in 0 until days) {
-            val targetHours = (3 + i * 0.5).toFloat()
-            val actualHours = (targetHours * (0.7 + Math.random() * 0.6)).toFloat()
-
-            targetEntries.add(Entry(i.toFloat(), targetHours))
-            actualEntries.add(Entry(i.toFloat(), actualHours))
-        }
-
-        val targetDataSet = LineDataSet(targetEntries, "Target").apply {
-            color = Color.rgb(76, 175, 80)
-            setCircleColor(Color.rgb(76, 175, 80))
             setDrawValues(true)
-            valueTextSize = 10f
+            valueFormatter = PercentFormatter()
+            valueTextSize = 12f
             valueTextColor = Color.BLACK
-            lineWidth = 2f
         }
-
-        val actualDataSet = LineDataSet(actualEntries, "Realisasi").apply {
-            color = Color.rgb(255, 152, 0)
-            setCircleColor(Color.rgb(255, 152, 0))
-            setDrawValues(true)
-            valueTextSize = 10f
-            valueTextColor = Color.BLACK
-            lineWidth = 2f
-        }
-
-        val dayLabels = listOf("Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Ming")
-        taskLineChart.xAxis.valueFormatter = IndexAxisValueFormatter(dayLabels)
-
-        val lineData = LineData(targetDataSet, actualDataSet)
-        taskLineChart.data = lineData
-        taskLineChart.invalidate()
-    }
-
-    private fun updateTaskMonthlyChart() {
-        val targetEntries = ArrayList<Entry>()
-        val actualEntries = ArrayList<Entry>()
-        val weeks = 5
-
-        for (i in 0 until weeks) {
-            val targetHours = (15 + i * 2).toFloat()
-            val actualHours = (targetHours * (0.7 + Math.random() * 0.5)).toFloat()
-
-            targetEntries.add(Entry(i.toFloat(), targetHours))
-            actualEntries.add(Entry(i.toFloat(), actualHours))
-        }
-
-        val targetDataSet = LineDataSet(targetEntries, "Target").apply {
-            color = Color.rgb(76, 175, 80)
-            setCircleColor(Color.rgb(76, 175, 80))
-            setDrawValues(true)
-            valueTextSize = 10f
-            valueTextColor = Color.BLACK
-            lineWidth = 2f
-        }
-
-        val actualDataSet = LineDataSet(actualEntries, "Realisasi").apply {
-            color = Color.rgb(255, 152, 0)
-            setCircleColor(Color.rgb(255, 152, 0))
-            setDrawValues(true)
-            valueTextSize = 10f
-            valueTextColor = Color.BLACK
-            lineWidth = 2f
-        }
-
-        val weekLabels = listOf("W1", "W2", "W3", "W4", "W5")
-        taskLineChart.xAxis.valueFormatter = IndexAxisValueFormatter(weekLabels)
-
-        val lineData = LineData(targetDataSet, actualDataSet)
-        taskLineChart.data = lineData
-        taskLineChart.invalidate()
-    }
-
-    private fun updateMoodBarChart() {
-        val barEntries = ArrayList<BarEntry>()
-
-        barEntries.add(BarEntry(0f, 4.5f))
-        barEntries.add(BarEntry(1f, 2.5f))
-        barEntries.add(BarEntry(2f, 7.2f))
-        barEntries.add(BarEntry(3f, 4.8f))
-
-        val barDataSet = BarDataSet(barEntries, "Mood Average")
-
-        val colors = listOf(
-            Color.rgb(255, 87, 34),
-            Color.rgb(96, 125, 139),
-            Color.rgb(76, 175, 80),
-            Color.rgb(0, 188, 212)
-        )
-        barDataSet.colors = colors
 
         val barData = BarData(barDataSet)
         barData.barWidth = 0.6f
 
-        barChart.data = barData
-        barChart.invalidate()
+        // Configure the chart for better display
+        barChart.apply {
+            data = barData
+            setFitBars(true)
+            description.isEnabled = false
+            animateY(1000)
+            setExtraOffsets(10f, 10f, 10f, 10f)
+            visibility = View.VISIBLE
+            invalidate()
+        }
     }
 
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
@@ -448,11 +623,11 @@ class ReportFragment : Fragment() {
             .setDuration(150)
             .withEndAction {
                 view.animate()
-                    .scaleX(1.0f)
-                    .scaleY(1.0f)
+                    .scaleX(1f)
+                    .scaleY(1f)
                     .setDuration(100)
-                    .withEndAction { action() }
                     .start()
+                view.postDelayed(action, 100)
             }
             .start()
     }
@@ -464,6 +639,13 @@ class ReportFragment : Fragment() {
                 val intent = Intent(requireContext(), ProfilActivity::class.java)
                 startActivity(intent)
             }
+        }
+    }
+
+    // Helper class for percentage formatting
+    inner class PercentFormatter : com.github.mikephil.charting.formatter.ValueFormatter() {
+        override fun getFormattedValue(value: Float): String {
+            return String.format("%.1f%%", value)
         }
     }
 }
