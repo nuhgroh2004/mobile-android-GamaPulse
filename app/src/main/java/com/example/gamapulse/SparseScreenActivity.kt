@@ -1,5 +1,6 @@
 package com.example.gamapulse
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.drawable.ColorDrawable
@@ -11,14 +12,38 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 
 class SparseScreenActivity : AppCompatActivity() {
+    /* ----------------------------- Lifecycle Methods ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Check if user is already logged in
+        if (isUserLoggedIn()) {
+            navigateToMain()
+            return
+        }
+
         enableEdgeToEdge()
         setContentView(R.layout.activity_sparse_screen)
         findViewById<Button>(R.id.btnLogin).foreground = getRippleDrawable(getColor(R.color.teal))
         findViewById<Button>(R.id.btnNewUser).foreground = getRippleDrawable(android.R.color.white)
         setupButtonWithAnimation(findViewById(R.id.btnLogin), LoginActivity::class.java)
         setupButtonWithAnimation(findViewById(R.id.btnNewUser), RegisterActivity::class.java)
+    }
+    /* ----------------------------- End Lifecycle Methods ----------------------------- */
+
+    /* ----------------------------- Authentication ----------------------------- */
+    private fun isUserLoggedIn(): Boolean {
+        val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+        val token = sharedPreferences.getString("token", null)
+        return !token.isNullOrEmpty()
+    }
+    /* ----------------------------- End Authentication ----------------------------- */
+
+    /* ----------------------------- Navigation ----------------------------- */
+    private fun navigateToMain() {
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
     }
 
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
@@ -32,6 +57,9 @@ class SparseScreenActivity : AppCompatActivity() {
             }.start()
         }
     }
+    /* ----------------------------- End Navigation ----------------------------- */
+
+    /* ----------------------------- UI Utilities ----------------------------- */
     private fun getRippleDrawable(color: Int): RippleDrawable {
         return RippleDrawable(
             ColorStateList.valueOf(getColor(R.color.ripple_color)),
@@ -39,4 +67,5 @@ class SparseScreenActivity : AppCompatActivity() {
             ColorDrawable(color)
         )
     }
+    /* ----------------------------- End UI Utilities ----------------------------- */
 }

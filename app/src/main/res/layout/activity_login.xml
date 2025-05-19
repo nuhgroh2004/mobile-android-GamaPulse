@@ -71,7 +71,7 @@
         android:id="@+id/btnTogglePassword"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
+        android:background="@null"
         android:contentDescription="Toggle Password Visibility"
         android:src="@drawable/ic_visibility_off"
         app:tint="@color/light_blue"
