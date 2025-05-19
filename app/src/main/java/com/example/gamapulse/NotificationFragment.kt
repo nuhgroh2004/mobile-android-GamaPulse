@@ -31,6 +31,8 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private val historyNotifications = mutableListOf<NotificationItem>()
     private var isInboxActive = true
     private lateinit var loadingDialog: SweetAlertDialog
+    private var isReturningFromProfile = false
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -52,6 +54,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
         profileButton.setOnClickListener {
             animateButtonAndExecute(it) {
+                isReturningFromProfile = true // Set flag before navigating
                 val intent = Intent(requireContext(), ProfilActivity::class.java)
                 startActivity(intent)
             }
@@ -89,26 +92,142 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     }
 
     private fun fetchNotifications() {
-        loadingDialog.show()
+        try {
+            if (!isAdded || context == null) return
+
+            loadingDialog.show()
+            lifecycleScope.launch {
+                try {
+                    val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                    val token = sharedPreferences.getString("token", null)
+                    if (token == null) {
+                        if (isAdded && context != null && loadingDialog.isShowing) {
+                            loadingDialog.dismissWithAnimation()
+                        }
+                        showErrorDialog("Token autentikasi tidak ditemukan")
+                        return@launch
+                    }
+
+                    Log.d("NotificationFragment", "Mengambil notifikasi dengan token: ${token.take(10)}...")
+                    val response = ApiClient.apiService.getNotifications("Bearer $token")
+
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+
+                    if (response.isSuccessful) {
+                        val notificationResponse = response.body()
+                        val unreadNotifications = notificationResponse?.unread_notifications ?: emptyList()
+                        val historyNotifs = notificationResponse?.history_notifications ?: emptyList()
+
+                        Log.d("NotificationFragment", "Notifikasi belum dibaca: ${unreadNotifications.size}")
+                        Log.d("NotificationFragment", "Riwayat notifikasi: ${historyNotifs.size}")
+
+                        val inbox = unreadNotifications.map { notification ->
+                            NotificationItem(
+                                id = notification.notification_id,
+                                sender = notification.name,
+                                message = "${notification.name} ingin melihat laporan Anda",
+                                email = notification.email,
+                                status = NotificationStatus.PENDING
+                            )
+                        }
+
+                        val history = historyNotifs.map { notification ->
+                            val status = when (notification.request_status.lowercase()) {
+                                "accepted", "allowed" -> NotificationStatus.ALLOWED
+                                "rejected" -> NotificationStatus.REJECTED
+                                else -> NotificationStatus.PENDING
+                            }
+                            NotificationItem(
+                                id = notification.notification_id,
+                                sender = notification.name,
+                                message = "${notification.name} ingin melihat laporan Anda",
+                                email = notification.email,
+                                status = status
+                            )
+                        }
+
+                        inboxNotifications.clear()
+                        inboxNotifications.addAll(inbox)
+                        inboxAdapter.updateNotifications(inboxNotifications)
+
+                        historyNotifications.clear()
+                        historyNotifications.addAll(history)
+                        historyAdapter.updateNotifications(historyNotifications)
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                        showErrorDialog("Gagal memuat notifikasi: ${response.message()}")
+                    }
+                } catch (e: Exception) {
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+                    Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                    showErrorDialog("Terjadi kesalahan: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error starting fetch", e)
+        }
+    }
+
+    private fun showErrorDialog(message: String) {
+        if (!isAdded || context == null) return
+
+        try {
+            SweetAlertDialog(requireContext(), SweetAlertDialog.ERROR_TYPE)
+                .setTitleText("Error")
+                .setContentText(message)
+                .setConfirmText("OK")
+                .setConfirmClickListener { it.dismissWithAnimation() }
+                .show()
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error showing dialog: ${e.message}", e)
+        }
+    }
+
+    private fun refreshNotifications() {
+        fetchNotifications()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        try {
+            // Use different refresh approach when returning from profile
+            if (isReturningFromProfile) {
+                isReturningFromProfile = false
+                // Add small delay to ensure smooth transition
+                view?.postDelayed({
+                    if (isAdded && context != null) {
+                        refreshNotificationsWithoutLoadingDialog()
+                    }
+                }, 300)
+            } else {
+                if (isAdded && context != null) {
+                    refreshNotifications()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error in onResume: ${e.message}", e)
+        }
+    }
+
+    private fun refreshNotificationsWithoutLoadingDialog() {
         lifecycleScope.launch {
             try {
+                if (!isAdded || context == null) return@launch
+
                 val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-                val token = sharedPreferences.getString("token", null)
-                if (token == null) {
-                    loadingDialog.dismissWithAnimation()
-                    showErrorDialog("Token autentikasi tidak ditemukan")
-                    return@launch
-                }
-                Log.d("NotificationFragment", "Mengambil notifikasi dengan token: ${token.take(10)}...")
+                val token = sharedPreferences.getString("token", null) ?: return@launch
+
                 val response = ApiClient.apiService.getNotifications("Bearer $token")
-                loadingDialog.dismissWithAnimation()
                 if (response.isSuccessful) {
                     val notificationResponse = response.body()
-                    val unreadNotifications = notificationResponse?.unread_notifications ?: emptyList()
-                    val historyNotifs = notificationResponse?.history_notifications ?: emptyList()
-                    Log.d("NotificationFragment", "Notifikasi belum dibaca: ${unreadNotifications.size}")
-                    Log.d("NotificationFragment", "Riwayat notifikasi: ${historyNotifs.size}")
-                    val inbox = unreadNotifications.map { notification ->
+
+                    val inbox = notificationResponse?.unread_notifications?.map { notification ->
                         NotificationItem(
                             id = notification.notification_id,
                             sender = notification.name,
@@ -116,8 +235,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                             email = notification.email,
                             status = NotificationStatus.PENDING
                         )
-                    }
-                    val history = historyNotifs.map { notification ->
+                    } ?: emptyList()
+
+                    val history = notificationResponse?.history_notifications?.map { notification ->
                         val status = when (notification.request_status.lowercase()) {
                             "accepted", "allowed" -> NotificationStatus.ALLOWED
                             "rejected" -> NotificationStatus.REJECTED
@@ -130,42 +250,22 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                             email = notification.email,
                             status = status
                         )
+                    } ?: emptyList()
+
+                    if (isAdded && context != null) {
+                        inboxNotifications.clear()
+                        inboxNotifications.addAll(inbox)
+                        inboxAdapter.updateNotifications(inbox)
+
+                        historyNotifications.clear()
+                        historyNotifications.addAll(history)
+                        historyAdapter.updateNotifications(history)
                     }
-                    inboxNotifications.clear()
-                    inboxNotifications.addAll(inbox)
-                    inboxAdapter.updateNotifications(inboxNotifications)
-                    historyNotifications.clear()
-                    historyNotifications.addAll(history)
-                    historyAdapter.updateNotifications(historyNotifications)
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
-                    showErrorDialog("Gagal memuat notifikasi: ${response.message()}")
                 }
             } catch (e: Exception) {
-                loadingDialog.dismissWithAnimation()
-                Log.e("NotificationFragment", "Exception: ${e.message}", e)
-                showErrorDialog("Terjadi kesalahan: ${e.message}")
+                Log.e("NotificationFragment", "Silent refresh error: ${e.message}", e)
             }
         }
-    }
-
-    private fun showErrorDialog(message: String) {
-        SweetAlertDialog(requireContext(), SweetAlertDialog.ERROR_TYPE)
-            .setTitleText("Error")
-            .setContentText(message)
-            .setConfirmText("OK")
-            .setConfirmClickListener { it.dismissWithAnimation() }
-            .show()
-    }
-
-    private fun refreshNotifications() {
-        fetchNotifications()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        refreshNotifications()
     }
 
     private fun setupTabs() {
@@ -240,169 +340,210 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         alertType: Int,
         onConfirm: () -> Unit
     ) {
-        val dialog = SweetAlertDialog(requireContext(), alertType)
-            .setTitleText(title)
-            .setContentText(message)
-            .setCancelText("Batal")
-            .setConfirmText(confirmText)
-            .showCancelButton(true)
-            .setConfirmClickListener { sDialog ->
-                sDialog.dismissWithAnimation()
-                onConfirm()
+        if (!isAdded || context == null) return
+
+        try {
+            val dialog = SweetAlertDialog(requireContext(), alertType)
+                .setTitleText(title)
+                .setContentText(message)
+                .setCancelText("Batal")
+                .setConfirmText(confirmText)
+                .showCancelButton(true)
+                .setConfirmClickListener { sDialog ->
+                    sDialog.dismissWithAnimation()
+                    onConfirm()
+                }
+                .setCancelClickListener { sDialog ->
+                    sDialog.dismissWithAnimation()
+                }
+            dialog.show()
+            val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
+            val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
+            cancelButton.apply {
+                background = resources.getDrawable(R.drawable.allert_button_cancel, requireActivity().theme)
+                setTextColor(Color.WHITE)
+                setPadding(24, 12, 24, 12)
+                minWidth = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+                ).toInt()
+                backgroundTintList = null
             }
-            .setCancelClickListener { sDialog ->
-                sDialog.dismissWithAnimation()
+            confirmButton.apply {
+                background = resources.getDrawable(R.drawable.allert_button_confirm, requireActivity().theme)
+                setTextColor(Color.WHITE)
+                setPadding(24, 12, 24, 12)
+                minWidth = TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
+                ).toInt()
+                backgroundTintList = null
             }
-        dialog.show()
-        val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
-        val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-        cancelButton.apply {
-            background = resources.getDrawable(R.drawable.allert_button_cancel, requireActivity().theme)
-            setTextColor(Color.WHITE)
-            setPadding(24, 12, 24, 12)
-            minWidth = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-            ).toInt()
-            backgroundTintList = null
-        }
-        confirmButton.apply {
-            background = resources.getDrawable(R.drawable.allert_button_confirm, requireActivity().theme)
-            setTextColor(Color.WHITE)
-            setPadding(24, 12, 24, 12)
-            minWidth = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-            ).toInt()
-            backgroundTintList = null
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error showing dialog: ${e.message}", e)
         }
     }
 
     private fun showSuccessDialog(message: String, onDismiss: (() -> Unit)? = null) {
-        val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("Berhasil!")
-            .setMessage(message)
-            .setPositiveButton("OK") { dialog, _ ->
-                dialog.dismiss()
-                onDismiss?.invoke()
+        if (!isAdded || context == null) return
+
+        try {
+            val dialogBuilder = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Berhasil!")
+                .setMessage(message)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                    onDismiss?.invoke()
+                }
+                .setCancelable(false)
+            val dialog = dialogBuilder.create()
+            dialog.show()
+            val positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+            positiveButton.apply {
+                setTextColor(Color.WHITE)
+                setBackgroundColor(resources.getColor(R.color.white, requireActivity().theme))
+                setPadding(24, 12, 24, 12)
             }
-            .setCancelable(false)
-        val dialog = dialogBuilder.create()
-        dialog.show()
-        val positiveButton = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
-        positiveButton.apply {
-            setTextColor(Color.WHITE)
-            setBackgroundColor(resources.getColor(R.color.white, requireActivity().theme))
-            setPadding(24, 12, 24, 12)
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error showing success dialog: ${e.message}", e)
         }
     }
 
     private fun processAllowNotification(notification: NotificationItem) {
-        val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
-        loadingDialog.titleText = "Mengizinkan permintaan..."
-        loadingDialog.setCancelable(false)
-        loadingDialog.show()
-        lifecycleScope.launch {
-            try {
-                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-                val token = sharedPreferences.getString("token", null)
-                if (token == null) {
-                    loadingDialog.dismissWithAnimation()
-                    showErrorDialog("Token autentikasi tidak ditemukan")
-                    return@launch
-                }
-                val request = NotificationActionRequest("approve")
-                val response = ApiClient.apiService.respondToNotification(
-                    "Bearer $token",
-                    notification.id,
-                    request
-                )
-                if (loadingDialog.isShowing) {
-                    loadingDialog.dismissWithAnimation()
-                }
-                if (response.isSuccessful) {
-                    val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-                    if (index != -1) {
-                        inboxNotifications.removeAt(index)
-                        inboxAdapter.updateNotifications(inboxNotifications)
-                        val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
-                        historyNotifications.add(0, updatedNotification)
-                        historyAdapter.updateNotifications(historyNotifications)
-                        switchToHistory()
-                        val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("Berhasil!")
-                            .setMessage("Permintaan telah diizinkan")
-                            .setPositiveButton("OK", null)
-                            .setCancelable(true)
-                            .create()
+        if (!isAdded || context == null) return
 
-                        successDialog.show()
+        try {
+            val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+            loadingDialog.titleText = "Mengizinkan permintaan..."
+            loadingDialog.setCancelable(false)
+            loadingDialog.show()
+
+            lifecycleScope.launch {
+                try {
+                    val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                    val token = sharedPreferences.getString("token", null)
+                    if (token == null) {
+                        if (isAdded && context != null && loadingDialog.isShowing) {
+                            loadingDialog.dismissWithAnimation()
+                        }
+                        showErrorDialog("Token autentikasi tidak ditemukan")
+                        return@launch
                     }
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
-                    showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+
+                    val request = NotificationActionRequest("approve")
+                    val response = ApiClient.apiService.respondToNotification(
+                        "Bearer $token",
+                        notification.id,
+                        request
+                    )
+
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+
+                    if (response.isSuccessful) {
+                        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
+                        if (index != -1) {
+                            inboxNotifications.removeAt(index)
+                            inboxAdapter.updateNotifications(inboxNotifications)
+                            val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
+                            historyNotifications.add(0, updatedNotification)
+                            historyAdapter.updateNotifications(historyNotifications)
+                            switchToHistory()
+
+                            if (isAdded && context != null) {
+                                val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                    .setTitle("Berhasil!")
+                                    .setMessage("Permintaan telah diizinkan")
+                                    .setPositiveButton("OK", null)
+                                    .setCancelable(true)
+                                    .create()
+                                successDialog.show()
+                            }
+                        }
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                        showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+                    }
+                } catch (e: Exception) {
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+                    Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                    showErrorDialog("Terjadi kesalahan: ${e.message}")
                 }
-            } catch (e: Exception) {
-                if (loadingDialog.isShowing) {
-                    loadingDialog.dismissWithAnimation()
-                }
-                Log.e("NotificationFragment", "Exception: ${e.message}", e)
-                showErrorDialog("Terjadi kesalahan: ${e.message}")
             }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error starting allow process: ${e.message}", e)
         }
     }
 
     private fun processRejectNotification(notification: NotificationItem) {
-        val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
-        loadingDialog.titleText = "Menolak permintaan..."
-        loadingDialog.setCancelable(false)
-        loadingDialog.show()
-        lifecycleScope.launch {
-            try {
-                val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-                val token = sharedPreferences.getString("token", null)
-                if (token == null) {
-                    loadingDialog.dismissWithAnimation()
-                    showErrorDialog("Token autentikasi tidak ditemukan")
-                    return@launch
-                }
-                val request = NotificationActionRequest("reject")
-                val response = ApiClient.apiService.respondToNotification(
-                    "Bearer $token",
-                    notification.id,
-                    request
-                )
-                if (loadingDialog.isShowing) {
-                    loadingDialog.dismissWithAnimation()
-                }
-                if (response.isSuccessful) {
-                    val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-                    if (index != -1) {
-                        inboxNotifications.removeAt(index)
-                        inboxAdapter.updateNotifications(inboxNotifications)
-                        val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
-                        historyNotifications.add(0, updatedNotification)
-                        historyAdapter.updateNotifications(historyNotifications)
-                        switchToHistory()
-                        val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                            .setTitle("Berhasil!")
-                            .setMessage("Permintaan telah ditolak")
-                            .setPositiveButton("OK", null)
-                            .setCancelable(true)
-                            .create()
-                        successDialog.show()
+        if (!isAdded || context == null) return
+
+        try {
+            val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+            loadingDialog.titleText = "Menolak permintaan..."
+            loadingDialog.setCancelable(false)
+            loadingDialog.show()
+
+            lifecycleScope.launch {
+                try {
+                    val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                    val token = sharedPreferences.getString("token", null)
+                    if (token == null) {
+                        if (isAdded && context != null && loadingDialog.isShowing) {
+                            loadingDialog.dismissWithAnimation()
+                        }
+                        showErrorDialog("Token autentikasi tidak ditemukan")
+                        return@launch
                     }
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
-                    showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+
+                    val request = NotificationActionRequest("reject")
+                    val response = ApiClient.apiService.respondToNotification(
+                        "Bearer $token",
+                        notification.id,
+                        request
+                    )
+
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+
+                    if (response.isSuccessful) {
+                        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
+                        if (index != -1) {
+                            inboxNotifications.removeAt(index)
+                            inboxAdapter.updateNotifications(inboxNotifications)
+                            val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
+                            historyNotifications.add(0, updatedNotification)
+                            historyAdapter.updateNotifications(historyNotifications)
+                            switchToHistory()
+
+                            if (isAdded && context != null) {
+                                val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                    .setTitle("Berhasil!")
+                                    .setMessage("Permintaan telah ditolak")
+                                    .setPositiveButton("OK", null)
+                                    .setCancelable(true)
+                                    .create()
+                                successDialog.show()
+                            }
+                        }
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
+                        showErrorDialog("Gagal memproses permintaan: ${response.message()}")
+                    }
+                } catch (e: Exception) {
+                    if (isAdded && context != null && loadingDialog.isShowing) {
+                        loadingDialog.dismissWithAnimation()
+                    }
+                    Log.e("NotificationFragment", "Exception: ${e.message}", e)
+                    showErrorDialog("Terjadi kesalahan: ${e.message}")
                 }
-            } catch (e: Exception) {
-                if (loadingDialog.isShowing) {
-                    loadingDialog.dismissWithAnimation()
-                }
-                Log.e("NotificationFragment", "Exception: ${e.message}", e)
-                showErrorDialog("Terjadi kesalahan: ${e.message}")
             }
+        } catch (e: Exception) {
+            Log.e("NotificationFragment", "Error starting reject process: ${e.message}", e)
         }
     }
 

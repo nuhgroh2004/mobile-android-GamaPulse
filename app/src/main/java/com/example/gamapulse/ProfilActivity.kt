@@ -272,11 +272,30 @@ class ProfilActivity : AppCompatActivity() {
     /* ----------------------------- Setup UI Components ----------------------------- */
     private fun setupBackButton() {
         binding.btnBack.setOnClickListener {
-            it.animate().alpha(0.5f).setDuration(100).withEndAction {
-                it.animate().alpha(1f).setDuration(100).start()
+            // Disable multiple clicks
+            it.isEnabled = false
+
+            // Use a cleaner animation sequence
+            it.animate().alpha(0.5f).setDuration(50).withEndAction {
+                it.animate().alpha(1f).setDuration(50).start()
+
+                // First set the transition animation
+                overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
+
+                // Then finish the activity with no history
                 finish()
-            }.start()
+
+                // Re-enable the button just in case
+                it.isEnabled = true
+            }
         }
+    }
+
+    // Handle system back button too
+    override fun onBackPressed() {
+        // First set transition animation
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
+        super.onBackPressed()
     }
 
     private fun setupEditButton() {
