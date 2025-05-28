@@ -24,9 +24,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import cn.pedant.SweetAlert.SweetAlertDialog
-import com.example.gamapulse.model.MoodNotesRequest
+import com.example.gamapulse.model.UpdateMoodRequest
 import com.example.gamapulse.network.ApiClient
 import kotlinx.coroutines.launch
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class EditMoodNotesActivity : AppCompatActivity() {
     private lateinit var moodTitleTextView: TextView
@@ -43,11 +46,10 @@ class EditMoodNotesActivity : AppCompatActivity() {
     private var currentMoodIntensity = 1
     private var currentMood = "Marah"
     private var selectedMoodView: ImageView? = null
-
-    // Parameters from intent
     private var day = 0
     private var month = 0
     private var year = 0
+    private var moodId: Int = 0
 
     /* ----------------------------- Lifecycle Methods ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,50 +61,63 @@ class EditMoodNotesActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
-        // Get date parameters from intent
         day = intent.getIntExtra("day", 1)
         month = intent.getIntExtra("month", 1)
         year = intent.getIntExtra("year", 2025)
-
         initializeViews()
         setupClickListeners()
-
-        // Fetch mood data for the specified date
+        moodNotesEditText.isEnabled = false
+        val dateTextView = findViewById<TextView>(R.id.dateTextView)
+        dateTextView.text = String.format("%02d/%02d/%d", day, month, year)
         fetchMoodData(day, month, year)
     }
     /* ----------------------------- End Lifecycle Methods ----------------------------- */
 
     /* ----------------------------- API Methods ----------------------------- */
     private fun fetchMoodData(day: Int, month: Int, year: Int) {
-        val loadingDialog = SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE)
-        loadingDialog.titleText = "Memuat data..."
-        loadingDialog.setCancelable(false)
-        loadingDialog.show()
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Memuat data...")
+            .setView(LayoutInflater.from(this).inflate(R.layout.progress_dialog, null))
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        val isDateToday = isToday(day, month, year)
 
         lifecycleScope.launch {
             try {
                 val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
                 val token = sharedPreferences.getString("token", null)
-
                 if (token != null) {
                     val authToken = "Bearer $token"
                     val response = ApiClient.apiService.getMoodNotes(authToken, day, month, year)
-
                     if (response.isSuccessful && response.body() != null) {
                         val moodResponse = response.body()!!
                         val mood = moodResponse.mood
 
                         if (mood != null) {
+                            moodId = mood.mood_id
                             currentMood = when (mood.mood_level) {
                                 1 -> "Marah"
                                 2 -> "Sedih"
                                 3 -> "Biasa"
                                 4 -> "Bahagia"
-                                else -> "Biasa"
+                                else -> ""
                             }
                             currentMoodIntensity = mood.mood_intensity
-                            moodNotesEditText.setText(mood.mood_note ?: "") // Set the notes here
+                            moodNotesEditText.setText(mood.mood_note ?: "")
+                            val dateTextView = findViewById<TextView>(R.id.dateTextView)
+                            dateTextView.text = String.format("%02d/%02d/%d", day, month, year)
+                            if (mood.updated_at != null || mood.created_at != null) {
+                                try {
+                                    val timeString = mood.updated_at ?: mood.created_at
+                                    val inputFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                    val outputFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+                                    val date = inputFormat.parse(timeString)
+                                } catch (e: Exception) {
+                                    Log.e("EditMoodNotes", "Error parsing time", e)
+                                }
+                            }
+                            moodTitleTextView.visibility = View.VISIBLE
                             updateMoodDisplay()
                             selectMoodView(
                                 when (currentMood) {
@@ -112,11 +127,20 @@ class EditMoodNotesActivity : AppCompatActivity() {
                                     else -> calmMoodImageView
                                 }
                             )
+                            setViewMode(isEditMode = false)
+                            editButton.isEnabled = isDateToday
+                            if (!isDateToday) {
+                                editButton.setOnClickListener {
+                                    showPastDateDialog()
+                                }
+                            }
                         } else {
-                            showPlaceholder()
+                            moodTitleTextView.visibility = View.GONE
+                            selectedMoodImageView.setImageResource(R.drawable.placeholder_circle)
                         }
                     } else {
-                        showPlaceholder()
+                        moodTitleTextView.visibility = View.GONE
+                        selectedMoodImageView.setImageResource(R.drawable.placeholder_circle)
                     }
                 } else {
                     Toast.makeText(this@EditMoodNotesActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
@@ -124,19 +148,12 @@ class EditMoodNotesActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 Log.e("EditMoodNotes", "Error fetching mood data", e)
-                showPlaceholder()
+                moodTitleTextView.visibility = View.GONE
+                selectedMoodImageView.setImageResource(R.drawable.placeholder_circle)
             } finally {
-                loadingDialog.dismissWithAnimation()
+                progressDialog.dismiss()
             }
         }
-    }
-
-    private fun showPlaceholder() {
-        currentMood = "Biasa"
-        currentMoodIntensity = 1
-        moodNotesEditText.setText("")
-        updateMoodDisplay()
-        selectMoodView(calmMoodImageView)
     }
     /* ----------------------------- End API Methods ----------------------------- */
 
@@ -162,9 +179,10 @@ class EditMoodNotesActivity : AppCompatActivity() {
             setViewMode(isEditMode = true)
         }
         saveButton.setOnClickListener {
-            showSaveConfirmation()
+            saveMoodData()
         }
         cancelButton.setOnClickListener {
+            setResult(RESULT_OK) // Set result untuk memastikan calendar di-refresh
             finish()
         }
         setupMoodSelectionListeners()
@@ -173,57 +191,16 @@ class EditMoodNotesActivity : AppCompatActivity() {
 
     /* ----------------------------- UI Helpers ----------------------------- */
     private fun showSaveConfirmation() {
-        val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
-            .setTitleText("Konfirmasi")
-            .setContentText("Apakah Anda yakin ingin menyimpan catatan mood ini?")
-            .setCancelText("Batal")
-            .setConfirmText("Simpan")
-            .showCancelButton(true)
-            .setConfirmClickListener { sDialog ->
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Konfirmasi")
+            .setMessage("Apakah Anda yakin ingin menyimpan catatan mood ini?")
+            .setNegativeButton("Batal") { dialog, _ -> dialog.dismiss() }
+            .setPositiveButton("Simpan") { dialog, _ ->
+                dialog.dismiss()
                 saveMoodData()
-                sDialog.dismissWithAnimation()
-                val successDialog = SweetAlertDialog(this, SweetAlertDialog.SUCCESS_TYPE)
-                    .setTitleText("Berhasil!")
-                    .setContentText("Catatan mood berhasil disimpan")
-                    .setConfirmClickListener { it ->
-                        it.dismissWithAnimation()
-                        setViewMode(isEditMode = false)
-                    }
-                successDialog.show()
-                successDialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
-                    background = resources.getDrawable(R.drawable.allert_button_ok, theme)
-                    setTextColor(Color.WHITE)
-                    setPadding(24, 12, 24, 12)
-                    minWidth = TypedValue.applyDimension(
-                        TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-                    ).toInt()
-                    backgroundTintList = null
-                }
             }
-            .setCancelClickListener { sDialog ->
-                sDialog.dismissWithAnimation()
-            }
+            .create()
         dialog.show()
-        val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
-        val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
-        cancelButton.apply {
-            background = resources.getDrawable(R.drawable.allert_button_cancel, theme)
-            setTextColor(Color.WHITE)
-            setPadding(24, 12, 24, 12)
-            minWidth = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-            ).toInt()
-            backgroundTintList = null
-        }
-        confirmButton.apply {
-            background = resources.getDrawable(R.drawable.allert_button_confirm, theme)
-            setTextColor(Color.WHITE)
-            setPadding(24, 12, 24, 12)
-            minWidth = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 120f, resources.displayMetrics
-            ).toInt()
-            backgroundTintList = null
-        }
     }
     /* ----------------------------- End UI Helpers ----------------------------- */
 
@@ -237,7 +214,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
         val decreaseButton = popupView.findViewById<View>(R.id.decrease_button)
         val cancelButton = popupView.findViewById<Button>(R.id.cancel_button)
         val okButton = popupView.findViewById<Button>(R.id.ok_button)
-
         titleTextView.text = "Seberapa $moodType kamu?"
         var currentValue = currentMoodIntensity
         numberPickerValue.text = currentValue.toString()
@@ -256,17 +232,12 @@ class EditMoodNotesActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this).setView(popupView).create()
         dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
         cancelButton.setOnClickListener {
-            cancelButton.background = ColorDrawable(Color.RED)
-            animateButtonAndExecute(cancelButton) {
-                dialog.dismiss()
-            }
+            dialog.dismiss()
         }
         okButton.setOnClickListener {
-            animateButtonAndExecute(okButton) {
-                currentMoodIntensity = currentValue
-                updateMoodDisplay()
-                dialog.dismiss()
-            }
+            currentMoodIntensity = currentValue
+            updateMoodDisplay()
+            dialog.dismiss()
         }
         dialog.show()
     }
@@ -274,10 +245,61 @@ class EditMoodNotesActivity : AppCompatActivity() {
 
     /* ----------------------------- Data Persistence ----------------------------- */
     private fun saveMoodData() {
+        if (!isToday(day, month, year)) {
+            AlertDialog.Builder(this)
+                .setTitle("Tidak Dapat Mengedit")
+                .setMessage("Anda tidak dapat mengedit mood selain hari ini.")
+                .setPositiveButton("OK", null)
+                .show()
+            return
+        }
         val notes = moodNotesEditText.text.toString()
-
-        // TODO: Implement API call to save mood data
-        println("Menyimpan mood: $currentMood dengan intensitas: $currentMoodIntensity dan catatan: $notes")
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle("Menyimpan data...")
+            .setView(LayoutInflater.from(this).inflate(R.layout.progress_dialog, null))
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+                if (token != null) {
+                    val authToken = "Bearer $token"
+                    val moodLevel = when (currentMood) {
+                        "Marah" -> 1
+                        "Sedih" -> 2
+                        "Biasa" -> 3
+                        "Bahagia" -> 4
+                        else -> 3
+                    }
+                    val request = UpdateMoodRequest(
+                        mood_level = moodLevel,
+                        mood_note = notes,
+                        mood_intensity = currentMoodIntensity.toString() // Konversi ke string
+                    )
+                    Log.d("EditMoodNotes", "Request Payload: $request")
+                    val response = ApiClient.apiService.updateMoodNote(authToken, moodId, request)
+                    progressDialog.dismiss()
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@EditMoodNotesActivity, "Berhasil memperbarui mood", Toast.LENGTH_SHORT).show()
+                        setResult(RESULT_OK)
+                        setViewMode(isEditMode = false)
+                        fetchMoodData(day, month, year)
+                    } else {
+                        Log.e("EditMoodNotes", "Error: ${response.code()} - ${response.errorBody()?.string()}")
+                        Toast.makeText(this@EditMoodNotesActivity, "Gagal memperbarui mood: ${response.message()}", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@EditMoodNotesActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                Log.e("EditMoodNotes", "Error updating mood data", e)
+                Toast.makeText(this@EditMoodNotesActivity, "Terjadi kesalahan: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
     /* ----------------------------- End Data Persistence ----------------------------- */
 
@@ -304,7 +326,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
         sadMoodImageView.setBackgroundResource(android.R.color.transparent)
         happyMoodImageView.setBackgroundResource(android.R.color.transparent)
         calmMoodImageView.setBackgroundResource(android.R.color.transparent)
-
         moodView.setBackgroundResource(R.drawable.calendar_cell_today)
         selectedMoodView = moodView
     }
@@ -319,15 +340,6 @@ class EditMoodNotesActivity : AppCompatActivity() {
         animatorSet.duration = 500
         animatorSet.interpolator = OvershootInterpolator()
         animatorSet.start()
-    }
-
-    private fun animateButtonAndExecute(view: View, action: () -> Unit) {
-        view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
-            view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
-            view.postDelayed({
-                action()
-            }, 150)
-        }.start()
     }
     /* ----------------------------- End Animation Helpers ----------------------------- */
 
@@ -354,7 +366,7 @@ class EditMoodNotesActivity : AppCompatActivity() {
         } else {
             moodSelectionLayout.visibility = View.GONE
             selectedMoodImageView.visibility = View.VISIBLE
-            moodNotesEditText.isEnabled = false
+            moodNotesEditText.isEnabled = false // Nonaktifkan EditText
             editButton.visibility = View.VISIBLE
             saveButton.visibility = View.GONE
         }

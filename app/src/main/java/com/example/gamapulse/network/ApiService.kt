@@ -13,6 +13,7 @@ import com.example.gamapulse.model.RegisterResponse
 import com.example.gamapulse.model.ReportResponse
 import com.example.gamapulse.model.StoreMoodRequest
 import com.example.gamapulse.model.StoreProgressRequest
+import com.example.gamapulse.model.UpdateMoodRequest
 import com.example.gamapulse.model.UpdateProfileRequest
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -78,6 +79,13 @@ interface ApiService {
         @Query("month") month: Int,
         @Query("year") year: Int
     ): Response<MoodNotesResponse>
+
+    @PUT("api/mahasiswa/update-mood-note/{id}")
+    suspend fun updateMoodNote(
+        @Header("Authorization") token: String,
+        @Path("id") moodId: Int,
+        @Body request: UpdateMoodRequest
+    ): Response<ResponseBody>
 
     @GET("api/mahasiswa/calendar")
     suspend fun getCalendarMoods(

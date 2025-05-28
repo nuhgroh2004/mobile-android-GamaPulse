@@ -65,7 +65,6 @@ class ViewCalendarActivity : AppCompatActivity() {
             calendar.add(Calendar.MONTH, 1)
             updateCalendar()
         }
-
         setupSwipeRefresh()
     }
 
@@ -94,6 +93,12 @@ class ViewCalendarActivity : AppCompatActivity() {
                 startActivity(intent)
             }
         }
+        updateCalendar()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Refresh data calendar saat activity menjadi visible kembali
         updateCalendar()
     }
 
