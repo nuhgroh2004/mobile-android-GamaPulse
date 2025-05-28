@@ -2,9 +2,11 @@ package com.example.gamapulse
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.util.Log
 import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
@@ -14,12 +16,17 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.lifecycleScope
 import cn.pedant.SweetAlert.SweetAlertDialog
+import com.example.gamapulse.model.MoodNotesRequest
+import com.example.gamapulse.network.ApiClient
+import kotlinx.coroutines.launch
 
 class EditMoodNotesActivity : AppCompatActivity() {
     private lateinit var moodTitleTextView: TextView
@@ -37,6 +44,12 @@ class EditMoodNotesActivity : AppCompatActivity() {
     private var currentMood = "Marah"
     private var selectedMoodView: ImageView? = null
 
+    // Parameters from intent
+    private var day = 0
+    private var month = 0
+    private var year = 0
+
+    /* ----------------------------- Lifecycle Methods ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -46,22 +59,88 @@ class EditMoodNotesActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
+
+        // Get date parameters from intent
+        day = intent.getIntExtra("day", 1)
+        month = intent.getIntExtra("month", 1)
+        year = intent.getIntExtra("year", 2025)
+
         initializeViews()
-        val mood = intent.getStringExtra("mood") ?: "Marah"
-        val notes = intent.getStringExtra("notes") ?: ""
-        currentMood = mood
-        updateMoodDisplay()
-        moodNotesEditText.setText(notes)
-        setViewMode(isEditMode = false)
         setupClickListeners()
-        when (currentMood) {
-            "Marah" -> selectMoodView(angryMoodImageView)
-            "Sedih" -> selectMoodView(sadMoodImageView)
-            "Bahagia" -> selectMoodView(happyMoodImageView)
-            "Biasa" -> selectMoodView(calmMoodImageView)
+
+        // Fetch mood data for the specified date
+        fetchMoodData(day, month, year)
+    }
+    /* ----------------------------- End Lifecycle Methods ----------------------------- */
+
+    /* ----------------------------- API Methods ----------------------------- */
+    private fun fetchMoodData(day: Int, month: Int, year: Int) {
+        val loadingDialog = SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Memuat data..."
+        loadingDialog.setCancelable(false)
+        loadingDialog.show()
+
+        lifecycleScope.launch {
+            try {
+                val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+
+                if (token != null) {
+                    val authToken = "Bearer $token"
+                    val response = ApiClient.apiService.getMoodNotes(authToken, day, month, year)
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val moodResponse = response.body()!!
+                        val mood = moodResponse.mood
+
+                        if (mood != null) {
+                            currentMood = when (mood.mood_level) {
+                                1 -> "Marah"
+                                2 -> "Sedih"
+                                3 -> "Biasa"
+                                4 -> "Bahagia"
+                                else -> "Biasa"
+                            }
+                            currentMoodIntensity = mood.mood_intensity
+                            moodNotesEditText.setText(mood.mood_note ?: "") // Set the notes here
+                            updateMoodDisplay()
+                            selectMoodView(
+                                when (currentMood) {
+                                    "Marah" -> angryMoodImageView
+                                    "Sedih" -> sadMoodImageView
+                                    "Bahagia" -> happyMoodImageView
+                                    else -> calmMoodImageView
+                                }
+                            )
+                        } else {
+                            showPlaceholder()
+                        }
+                    } else {
+                        showPlaceholder()
+                    }
+                } else {
+                    Toast.makeText(this@EditMoodNotesActivity, "Token tidak ditemukan", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            } catch (e: Exception) {
+                Log.e("EditMoodNotes", "Error fetching mood data", e)
+                showPlaceholder()
+            } finally {
+                loadingDialog.dismissWithAnimation()
+            }
         }
     }
 
+    private fun showPlaceholder() {
+        currentMood = "Biasa"
+        currentMoodIntensity = 1
+        moodNotesEditText.setText("")
+        updateMoodDisplay()
+        selectMoodView(calmMoodImageView)
+    }
+    /* ----------------------------- End API Methods ----------------------------- */
+
+    /* ----------------------------- View Initialization ----------------------------- */
     private fun initializeViews() {
         moodTitleTextView = findViewById(R.id.moodTitleTextView)
         selectedMoodImageView = findViewById(R.id.selectedMoodImageView)
@@ -75,7 +154,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
         happyMoodImageView = findViewById(R.id.happyMoodImageView)
         calmMoodImageView = findViewById(R.id.calmMoodImageView)
     }
+    /* ----------------------------- End View Initialization ----------------------------- */
 
+    /* ----------------------------- Event Listeners ----------------------------- */
     private fun setupClickListeners() {
         editButton.setOnClickListener {
             setViewMode(isEditMode = true)
@@ -88,7 +169,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
         }
         setupMoodSelectionListeners()
     }
+    /* ----------------------------- End Event Listeners ----------------------------- */
 
+    /* ----------------------------- UI Helpers ----------------------------- */
     private fun showSaveConfirmation() {
         val dialog = SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
             .setTitleText("Konfirmasi")
@@ -142,7 +225,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
             backgroundTintList = null
         }
     }
+    /* ----------------------------- End UI Helpers ----------------------------- */
 
+    /* ----------------------------- Mood Selection ----------------------------- */
     private fun showMoodRatingPopup(moodType: String) {
         val inflater = LayoutInflater.from(this)
         val popupView = inflater.inflate(R.layout.popup_intensitas_mood, null)
@@ -185,12 +270,18 @@ class EditMoodNotesActivity : AppCompatActivity() {
         }
         dialog.show()
     }
+    /* ----------------------------- End Mood Selection ----------------------------- */
 
+    /* ----------------------------- Data Persistence ----------------------------- */
     private fun saveMoodData() {
         val notes = moodNotesEditText.text.toString()
+
+        // TODO: Implement API call to save mood data
         println("Menyimpan mood: $currentMood dengan intensitas: $currentMoodIntensity dan catatan: $notes")
     }
+    /* ----------------------------- End Data Persistence ----------------------------- */
 
+    /* ----------------------------- Selection Helpers ----------------------------- */
     private fun setupMoodSelectionListeners() {
         val moodViews = listOf(
             angryMoodImageView,
@@ -217,7 +308,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
         moodView.setBackgroundResource(R.drawable.calendar_cell_today)
         selectedMoodView = moodView
     }
+    /* ----------------------------- End Selection Helpers ----------------------------- */
 
+    /* ----------------------------- Animation Helpers ----------------------------- */
     private fun animateEmoji(view: View) {
         val scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 1f, 1.3f, 1f)
         val scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 1f, 1.3f, 1f)
@@ -236,7 +329,9 @@ class EditMoodNotesActivity : AppCompatActivity() {
             }, 150)
         }.start()
     }
+    /* ----------------------------- End Animation Helpers ----------------------------- */
 
+    /* ----------------------------- UI State Management ----------------------------- */
     private fun updateMoodDisplay() {
         moodTitleTextView.text = "SAYA MERASA ${currentMood.uppercase()} (${currentMoodIntensity})"
         val drawableId = when (currentMood) {
@@ -264,4 +359,5 @@ class EditMoodNotesActivity : AppCompatActivity() {
             saveButton.visibility = View.GONE
         }
     }
+    /* ----------------------------- End UI State Management ----------------------------- */
 }

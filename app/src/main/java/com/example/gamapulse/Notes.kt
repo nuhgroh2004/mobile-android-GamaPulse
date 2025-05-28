@@ -36,10 +36,12 @@ class Notes : AppCompatActivity() {
         binding.btnSimpan.foreground = getRippleDrawable(getColor(R.color.white))
         binding.btnKembali.setOnClickListener {
             animateButtonAndExecute(it) {
-                val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
-                with(sharedPref.edit()) {
+                val sharedPreferences = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
+                // Remove the flag that would cause the mood selection to show again
+                with(sharedPreferences.edit()) {
                     putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
-                    putBoolean("SHOULD_SHOW_MOOD_SELECTION", true)
+                    // Don't set SHOULD_SHOW_MOOD_SELECTION to true when canceling
+                    // putBoolean("SHOULD_SHOW_MOOD_SELECTION", true) - REMOVE THIS LINE
                     apply()
                 }
                 finish()
@@ -149,6 +151,7 @@ class Notes : AppCompatActivity() {
             Toast.makeText(this, "Authentication error. Please login again.", Toast.LENGTH_SHORT).show()
             return
         }
+
         val mappedEmotion = when (emotion) {
             "Biasa" -> "Biasa saja"
             "Bahagia" -> "Senang"
@@ -156,34 +159,34 @@ class Notes : AppCompatActivity() {
         }
 
         val validIntensity = if (intensity.isEmpty() || intensity == "0") "1" else intensity
+
+        // Always send empty string instead of null - this appears to be what the API expects
+        // The database likely has a NOT NULL constraint but accepts empty strings
+        val notesToSend = notes.trim()
+
+        // Add timestamp to the request
+        val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+        Log.d("MoodAPI", "Current datetime: $currentDateTime")
+
         val authToken = "Bearer $token"
-        val request = StoreMoodRequest(mappedEmotion, validIntensity, notes)
-        Log.d("MoodAPI", "Sending mood request: Original emotion: $emotion, Mapped to: $mappedEmotion, intensity: $validIntensity, notes: $notes")
+        val request = StoreMoodRequest(mappedEmotion, validIntensity, notesToSend)
+        Log.d("MoodAPI", "Sending mood request: Original emotion: $emotion, Mapped: $mappedEmotion, intensity: $validIntensity, notes: '$notesToSend'")
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = ApiClient.apiService.storeMood(authToken, request)
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
-                        Log.d("MoodAPI", "Mood saved successfully")
+                        Log.d("MoodAPI", "Mood stored successfully")
                     } else {
-                        val errorBody = response.errorBody()?.string() ?: "Unknown error"
-                        Log.e("MoodAPI", "Failed to save mood: $errorBody")
-                        Toast.makeText(
-                            this@Notes,
-                            "Failed to save mood: $errorBody",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Log.e("MoodAPI", "Failed to store mood: ${response.code()} - ${response.message()}")
+                        Log.e("MoodAPI", "Response body: ${response.errorBody()?.string()}")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Log.e("MoodAPI", "Exception while saving mood", e)
-                    Toast.makeText(
-                        this@Notes,
-                        "Error: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Log.e("MoodAPI", "Exception storing mood: ${e.message}")
+                    e.printStackTrace()
                 }
             }
         }

@@ -3,6 +3,8 @@ package com.example.gamapulse.network
 import com.example.gamapulse.model.CalendarResponse
 import com.example.gamapulse.model.LoginRequest
 import com.example.gamapulse.model.LoginResponse
+import com.example.gamapulse.model.MoodNotesRequest
+import com.example.gamapulse.model.MoodNotesResponse
 import com.example.gamapulse.model.NotificationActionRequest
 import com.example.gamapulse.model.NotificationResponse
 import com.example.gamapulse.model.ProfileResponse
@@ -68,6 +70,14 @@ interface ApiService {
         @Query("month") month: Int,
         @Query("year") year: Int
     ): Response<ReportResponse>
+
+    @GET("api/mahasiswa/edit-mood-notes")
+    suspend fun getMoodNotes(
+        @Header("Authorization") token: String,
+        @Query("day") day: Int,
+        @Query("month") month: Int,
+        @Query("year") year: Int
+    ): Response<MoodNotesResponse>
 
     @GET("api/mahasiswa/calendar")
     suspend fun getCalendarMoods(

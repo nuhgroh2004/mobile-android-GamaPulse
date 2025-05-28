@@ -61,27 +61,20 @@ class HomeFragment : Fragment() {
         super.onResume()
         val sharedPref = requireActivity().getSharedPreferences(PREFS_NAME, AppCompatActivity.MODE_PRIVATE)
         val isTemporarilyNavigating = sharedPref.getBoolean(KEY_TEMP_NAVIGATING, false)
-        val shouldShowMoodSelection = sharedPref.getBoolean("SHOULD_SHOW_MOOD_SELECTION", false)
         val lastMoodDate = sharedPref.getString(KEY_LAST_MOOD_DATE, "")
         val currentDate = getCurrentDate()
-        if (lastMoodDate == currentDate) {
-            moodSelectionContainer?.visibility = View.GONE
-            moodParentContainer?.visibility = View.GONE
+        if (isTemporarilyNavigating) {
             with(sharedPref.edit()) {
                 putBoolean(KEY_TEMP_NAVIGATING, false)
-                putBoolean("SHOULD_SHOW_MOOD_SELECTION", false)
-                remove(KEY_TEMP_MOOD_TYPE)
-                remove(KEY_TEMP_MOOD_INTENSITY)
                 apply()
             }
         }
-        else if (shouldShowMoodSelection || isTemporarilyNavigating) {
+        if (lastMoodDate == currentDate) {
+            moodSelectionContainer?.visibility = View.GONE
+            moodParentContainer?.visibility = View.GONE
+        } else {
             moodSelectionContainer?.visibility = View.VISIBLE
             moodParentContainer?.visibility = View.VISIBLE
-            with(sharedPref.edit()) {
-                putBoolean("SHOULD_SHOW_MOOD_SELECTION", false)
-                apply()
-            }
         }
         updateMoodDisplay(requireView())
     }
