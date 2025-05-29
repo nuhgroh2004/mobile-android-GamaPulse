@@ -20,7 +20,12 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.example.gamapulse.network.ApiClient
 import com.github.mikephil.charting.BuildConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -34,9 +39,12 @@ class HomeFragment : Fragment() {
     private val KEY_TEMP_NAVIGATING = "TEMP_NAVIGATING_TO_NOTES"
     private val KEY_TEMP_MOOD_TYPE = "TEMP_MOOD_TYPE"
     private val KEY_TEMP_MOOD_INTENSITY = "TEMP_MOOD_INTENSITY"
+    private lateinit var usernameLayout: TextView
+    private var authToken: String? = null
     private var moodSelectionContainer: LinearLayout? = null
     private var moodParentContainer: LinearLayout? = null
     private var devRefreshButton: Button? = null
+
 
     /* ----------------------------- Fragment Lifecycle Methods ----------------------------- */
     override fun onCreateView(
@@ -47,7 +55,10 @@ class HomeFragment : Fragment() {
         moodParentContainer = view.findViewById<LinearLayout>(R.id.mood_container)?.parent as? LinearLayout
         moodSelectionContainer = view.findViewById(R.id.mood_container)
         devRefreshButton = view.findViewById(R.id.dev_refresh_button)
+        usernameLayout = view.findViewById(R.id.usernameLayout)
         view.findViewById<View>(R.id.current_mood_card).visibility = View.GONE
+        getAuthToken()
+        fetchUserProfile()
         setupMoodEmojis(view)
         setupTaskLogButton(view)
         setupProfileButton(view)
@@ -72,13 +83,50 @@ class HomeFragment : Fragment() {
         if (lastMoodDate == currentDate) {
             moodSelectionContainer?.visibility = View.GONE
             moodParentContainer?.visibility = View.GONE
+            view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.VISIBLE
         } else {
             moodSelectionContainer?.visibility = View.VISIBLE
             moodParentContainer?.visibility = View.VISIBLE
+            view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.GONE
+            if (!lastMoodDate.isNullOrEmpty() && lastMoodDate != currentDate) {
+                with(sharedPref.edit()) {
+                    // Keep the old data for history, but mark that today needs a new entry
+                    putString(KEY_LAST_MOOD_DATE, "")
+                    apply()
+                }
+            }
         }
         updateMoodDisplay(requireView())
     }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
+
+    /* ----------------------------- GET Username login ----------------------------- */
+    private fun getAuthToken() {
+        val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", AppCompatActivity.MODE_PRIVATE)
+        authToken = sharedPreferences.getString("token", "")
+    }
+    private fun fetchUserProfile() {
+        if (authToken.isNullOrEmpty()) {
+            return
+        }
+        val bearerToken = "Bearer $authToken"
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.getProfile(bearerToken)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val profileData = response.body()!!
+                        usernameLayout.text = "HALO ${profileData.user.name}"
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Gagal memuat profil: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    /* ----------------------------- GET Username login ----------------------------- */
 
     /* ----------------------------- Developer Mode Methods ----------------------------- */
     private fun setupDevRefreshButton() {

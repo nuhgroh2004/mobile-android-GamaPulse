@@ -50,11 +50,12 @@
                 android:padding="16dp">
 
                 <TextView
+                    android:id="@+id/usernameLayout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginStart="8dp"
-                    android:text="HALO Saipul"
+                    android:text=""
                     android:textColor="#000000"
                     android:textSize="24sp"
                     android:textStyle="bold" />
@@ -245,16 +246,15 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="16dp"
-                app:cardBackgroundColor="#E8DAFF"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
+                app:cardBackgroundColor="#ffffff"
+                app:cardCornerRadius="25dp"
+                >
 
                 <TextView
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:padding="16dp"
-                    android:text="@string/pesan_1"
-                    android:textColor="#333333" />
+                    android:layout_height="180dp"
+                    android:background="@drawable/motivasi"
+                    app:cardElevation="4dp" />
             </androidx.cardview.widget.CardView>
 
             <!-- Task Log Card -->
@@ -288,7 +288,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_below="@id/taskLogTitle"
-                        android:text="Lorem ipsum"
                         android:textColor="#3F2642" />
 
                     <ImageView
@@ -332,7 +331,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_below="@id/viewMoodTitle"
-                        android:text="Lorem ipsum"
                         android:textColor="#3F2642" />
 
                     <ImageView

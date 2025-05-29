@@ -150,109 +150,81 @@ class RegisterActivity : AppCompatActivity() {
         val phoneNumber = etNomorTelepon.text.toString().trim()
         val nim = etNIM.text.toString().trim()
         val password = etPassword.text.toString().trim()
-
         val tanggalLahir = if (etTanggalLahir.text.toString().isNotEmpty()) {
             apiDateFormat.format(calendar.time)
         } else {
             ""
         }
-
-        // Validate name
         if (!validateName(name)) {
             etUsername.error = "Nama harus diisi dan maksimal 25 karakter"
             etUsername.requestFocus()
             return
         }
-
-        // Validate email
         if (!validateEmail(email)) {
             etEmailUgm.error = "Email harus menggunakan format @mail.ugm.ac.id yang valid"
             etEmailUgm.requestFocus()
             return
         }
-
-        // Validate prodi
         if (!validateProdi(prodi)) {
             etProdi.error = "Program studi harus diisi dan maksimal 255 karakter"
             etProdi.requestFocus()
             return
         }
-
-        // Validate date of birth
         if (!validateDOB(tanggalLahir)) {
             etTanggalLahir.error = "Tanggal lahir harus diisi dengan format yang valid"
             dobLayout.requestFocus()
             return
         }
-
-        // Validate phone number (optional)
         if (phoneNumber.isNotEmpty() && !validatePhone(phoneNumber)) {
             etNomorTelepon.error = "Nomor telepon harus terdiri dari 10-12 digit angka"
             etNomorTelepon.requestFocus()
             return
         }
-
-        // Validate NIM
         if (!validateNIM(nim)) {
             etNIM.error = "Format NIM harus XX/XXXXXX/AA/XXXXX"
             etNIM.requestFocus()
             return
         }
-
-        // Validate password
         if (!validatePassword(password)) {
             etPassword.error = "Password minimal 8 karakter dan harus mengandung huruf dan angka"
             etPassword.requestFocus()
             return
         }
-
-        // All validations passed, proceed with registration
         registerUser(name, email, prodi, tanggalLahir, phoneNumber, nim, password)
     }
 
-    // Keep existing validation methods intact
     private fun validateName(name: String): Boolean {
         return name.isNotEmpty() && name.length <= 25
     }
-
     private fun validateEmail(email: String): Boolean {
         val emailRegex = "^[a-zA-Z0-9._%+-]+@mail\\.ugm\\.ac\\.id$".toRegex()
         return email.isNotEmpty() && email.length <= 255 && emailRegex.matches(email)
     }
-
     private fun validateProdi(prodi: String): Boolean {
         return prodi.isNotEmpty() && prodi.length <= 255
     }
-
     private fun validateDOB(dob: String): Boolean {
         return dob.isNotEmpty() && dob.matches("^\\d{4}-\\d{2}-\\d{2}$".toRegex())
     }
-
     private fun validatePhone(phone: String): Boolean {
         val phoneRegex = "^[0-9]{10,12}$".toRegex()
         return phone.isEmpty() || phoneRegex.matches(phone) // Phone is nullable
     }
-
     private fun validateNIM(nim: String): Boolean {
         val nimRegex = "^\\d{2}/\\d{6}/[A-Za-z]{2}/\\d{5}$".toRegex()
         return nim.isNotEmpty() && nim.length <= 20 && nimRegex.matches(nim)
     }
-
     private fun validatePassword(password: String): Boolean {
         val passwordRegex = "^(?=.*[A-Za-z])(?=.*\\d).{8,}$".toRegex()
         return password.isNotEmpty() && passwordRegex.matches(password)
     }
-
     private fun showValidationError(message: String) {
         val dialog = AlertDialog.Builder(this)
             .setTitle("Validasi Gagal")
             .setMessage(message)
             .setPositiveButton("OK", null)
             .create()
-
         dialog.show()
-
-        // Center the button
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
             val parent = this.parent as? LinearLayout
             parent?.gravity = Gravity.CENTER_HORIZONTAL
@@ -261,16 +233,12 @@ class RegisterActivity : AppCompatActivity() {
 
     private fun registerUser(name: String, email: String, prodi: String, tanggalLahir: String,
                              phoneNumber: String, nim: String, password: String) {
-        // Show loading dialog
         val loadingDialog = ProgressDialog(this).apply {
             setMessage("Mendaftarkan akun...")
             setCancelable(false)
             show()
         }
-
-        // Disable register button to prevent multiple clicks
         btnRegister.isEnabled = false
-
         val registerRequest = RegisterRequest(
             name = name,
             email = email,
@@ -280,14 +248,12 @@ class RegisterActivity : AppCompatActivity() {
             nim = nim,
             password = password
         )
-
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = ApiClient.apiService.register(registerRequest)
                 withContext(Dispatchers.Main) {
                     loadingDialog.dismiss()
                     btnRegister.isEnabled = true
-
                     if (response.isSuccessful) {
                         val registerResponse = response.body()
                         if (registerResponse?.token != null) {
