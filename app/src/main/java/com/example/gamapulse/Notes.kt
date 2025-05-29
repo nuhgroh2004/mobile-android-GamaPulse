@@ -27,6 +27,7 @@ import java.util.Locale
 class Notes : AppCompatActivity() {
     private lateinit var binding: ActivityNotesBinding
 
+    /* ----------------------------- onCreate ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -37,16 +38,18 @@ class Notes : AppCompatActivity() {
         binding.btnKembali.setOnClickListener {
             animateButtonAndExecute(it) {
                 val sharedPreferences = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
-                // Remove the flag that would cause the mood selection to show again
                 with(sharedPreferences.edit()) {
                     putBoolean("TEMP_NAVIGATING_TO_NOTES", false)
-                    // Don't set SHOULD_SHOW_MOOD_SELECTION to true when canceling
-                    // putBoolean("SHOULD_SHOW_MOOD_SELECTION", true) - REMOVE THIS LINE
                     apply()
                 }
                 finish()
             }
         }
+
+        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale("id"))
+        binding.displayTextTanggal.text = dateFormat.format(Date())
+        val timeFormat = SimpleDateFormat("HH:mm", Locale("id"))
+        binding.displayTextJam.text = timeFormat.format(Date())
 
         binding.btnSimpan.setOnClickListener {
             animateButtonAndExecute(it) {
@@ -61,7 +64,6 @@ class Notes : AppCompatActivity() {
                         val moodType = intent.getStringExtra("MOOD_TYPE") ?: "Biasa"
                         val moodIntensity = intent.getIntExtra("MOOD_INTENSITY", 1)
 
-                        // Save locally
                         val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
                         val currentDate = getCurrentDate()
                         with(sharedPref.edit()) {
@@ -72,7 +74,6 @@ class Notes : AppCompatActivity() {
                             apply()
                         }
 
-                        // Save to API
                         saveMoodToApi(moodType, moodIntensity.toString(), catatan)
 
                         sDialog.dismissWithAnimation()
@@ -99,7 +100,9 @@ class Notes : AppCompatActivity() {
             }
         }
     }
+    /* ----------------------------- onCreate ----------------------------- */
 
+    /* ----------------------------- onBackPressed ----------------------------- */
     override fun onBackPressed() {
         val sharedPref = getSharedPreferences("MoodPrefs", MODE_PRIVATE)
         with(sharedPref.edit()) {
@@ -108,12 +111,16 @@ class Notes : AppCompatActivity() {
         }
         super.onBackPressed()
     }
+    /* ----------------------------- onBackPressed ----------------------------- */
 
+    /* ----------------------------- getCurrentDate ----------------------------- */
     private fun getCurrentDate(): String {
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         return dateFormat.format(Date())
     }
+    /* ----------------------------- getCurrentDate ----------------------------- */
 
+    /* ----------------------------- animateButtonAndExecute ----------------------------- */
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
         view.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
             view.animate().scaleX(1f).scaleY(1f).setDuration(100).start()
@@ -122,7 +129,9 @@ class Notes : AppCompatActivity() {
             }, 150)
         }.start()
     }
+    /* ----------------------------- animateButtonAndExecute ----------------------------- */
 
+    /* ----------------------------- setupButtonWithAnimation ----------------------------- */
     private fun setupButtonWithAnimation(button: View, destinationClass: Class<*>) {
         button.setOnClickListener {
             it.animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).withEndAction {
@@ -134,7 +143,9 @@ class Notes : AppCompatActivity() {
             }.start()
         }
     }
+    /* ----------------------------- setupButtonWithAnimation ----------------------------- */
 
+    /* ----------------------------- getRippleDrawable ----------------------------- */
     private fun getRippleDrawable(color: Int): RippleDrawable {
         return RippleDrawable(
             ColorStateList.valueOf(getColor(R.color.ripple_color)),
@@ -142,7 +153,9 @@ class Notes : AppCompatActivity() {
             ColorDrawable(color)
         )
     }
+    /* ----------------------------- getRippleDrawable ----------------------------- */
 
+    /* ----------------------------- saveMoodToApi ----------------------------- */
     private fun saveMoodToApi(emotion: String, intensity: String, notes: String) {
         val sharedPreferences = getSharedPreferences("AuthPrefs", MODE_PRIVATE)
         val token = sharedPreferences.getString("token", null)
@@ -160,11 +173,8 @@ class Notes : AppCompatActivity() {
 
         val validIntensity = if (intensity.isEmpty() || intensity == "0") "1" else intensity
 
-        // Always send empty string instead of null - this appears to be what the API expects
-        // The database likely has a NOT NULL constraint but accepts empty strings
         val notesToSend = notes.trim()
 
-        // Add timestamp to the request
         val currentDateTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
         Log.d("MoodAPI", "Current datetime: $currentDateTime")
 
@@ -191,7 +201,9 @@ class Notes : AppCompatActivity() {
             }
         }
     }
+    /* ----------------------------- saveMoodToApi ----------------------------- */
 
+    /* ----------------------------- styleConfirmButton ----------------------------- */
     private fun styleConfirmButton(dialog: SweetAlertDialog) {
         dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)?.apply {
             background = getDrawable(R.drawable.allert_button_ok)
@@ -203,7 +215,9 @@ class Notes : AppCompatActivity() {
             backgroundTintList = null
         }
     }
+    /* ----------------------------- styleConfirmButton ----------------------------- */
 
+    /* ----------------------------- styleAlertButtons ----------------------------- */
     private fun styleAlertButtons(dialog: SweetAlertDialog) {
         val cancelButton = dialog.getButton(SweetAlertDialog.BUTTON_CANCEL)
         val confirmButton = dialog.getButton(SweetAlertDialog.BUTTON_CONFIRM)
@@ -228,4 +242,5 @@ class Notes : AppCompatActivity() {
             backgroundTintList = null
         }
     }
+    /* ----------------------------- styleAlertButtons ----------------------------- */
 }
