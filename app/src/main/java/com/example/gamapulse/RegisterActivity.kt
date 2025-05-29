@@ -157,24 +157,62 @@ class RegisterActivity : AppCompatActivity() {
             ""
         }
 
-        // Run all validations
-        when {
-            !validateName(name) -> showValidationError("Nama harus diisi dan maksimal 255 karakter")
-            !validateEmail(email) -> showValidationError("Email harus menggunakan format @mail.ugm.ac.id yang valid")
-            !validateProdi(prodi) -> showValidationError("Program studi harus diisi dan maksimal 255 karakter")
-            !validateDOB(tanggalLahir) -> showValidationError("Tanggal lahir harus diisi dengan format yang valid")
-            !validatePhone(phoneNumber) -> showValidationError("Nomor telepon harus terdiri dari 10-12 digit angka")
-            !validateNIM(nim) -> showValidationError("Format NIM harus XX/XXXXXX/AA/XXXXX")
-            !validatePassword(password) -> showValidationError("Password minimal 8 karakter dan harus mengandung huruf dan angka")
-            else -> {
-                // All validations passed, proceed with registration
-                registerUser(name, email, prodi, tanggalLahir, phoneNumber, nim, password)
-            }
+        // Validate name
+        if (!validateName(name)) {
+            etUsername.error = "Nama harus diisi dan maksimal 25 karakter"
+            etUsername.requestFocus()
+            return
         }
+
+        // Validate email
+        if (!validateEmail(email)) {
+            etEmailUgm.error = "Email harus menggunakan format @mail.ugm.ac.id yang valid"
+            etEmailUgm.requestFocus()
+            return
+        }
+
+        // Validate prodi
+        if (!validateProdi(prodi)) {
+            etProdi.error = "Program studi harus diisi dan maksimal 255 karakter"
+            etProdi.requestFocus()
+            return
+        }
+
+        // Validate date of birth
+        if (!validateDOB(tanggalLahir)) {
+            etTanggalLahir.error = "Tanggal lahir harus diisi dengan format yang valid"
+            dobLayout.requestFocus()
+            return
+        }
+
+        // Validate phone number (optional)
+        if (phoneNumber.isNotEmpty() && !validatePhone(phoneNumber)) {
+            etNomorTelepon.error = "Nomor telepon harus terdiri dari 10-12 digit angka"
+            etNomorTelepon.requestFocus()
+            return
+        }
+
+        // Validate NIM
+        if (!validateNIM(nim)) {
+            etNIM.error = "Format NIM harus XX/XXXXXX/AA/XXXXX"
+            etNIM.requestFocus()
+            return
+        }
+
+        // Validate password
+        if (!validatePassword(password)) {
+            etPassword.error = "Password minimal 8 karakter dan harus mengandung huruf dan angka"
+            etPassword.requestFocus()
+            return
+        }
+
+        // All validations passed, proceed with registration
+        registerUser(name, email, prodi, tanggalLahir, phoneNumber, nim, password)
     }
 
+    // Keep existing validation methods intact
     private fun validateName(name: String): Boolean {
-        return name.isNotEmpty() && name.length <= 255
+        return name.isNotEmpty() && name.length <= 25
     }
 
     private fun validateEmail(email: String): Boolean {
