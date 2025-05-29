@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
                 R.id.home -> HomeFragment()
                 R.id.report -> ReportFragment()
                 R.id.notification -> {
-                    // Clear badge when notifications are viewed
                     clearNotificationBadge()
                     NotificationFragment()
                 }

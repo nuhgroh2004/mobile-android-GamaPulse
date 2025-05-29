@@ -9,6 +9,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gamapulse.model.NotificationItem
 
+/* ----------------------------- NotificationAdapter ----------------------------- */
 class NotificationAdapter(
     private var notifications: List<NotificationItem>,
     private val listener: NotificationActionListener,
@@ -26,6 +27,7 @@ class NotificationAdapter(
         fun onDeleteClick(notification: NotificationItem)
     }
 
+    /* ----------------------------- InboxViewHolder ----------------------------- */
     inner class InboxViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val senderTextView: TextView = itemView.findViewById(R.id.tvNotificationSender)
         val emailTextView: TextView = itemView.findViewById(R.id.tvNotificationEmail)
@@ -39,7 +41,6 @@ class NotificationAdapter(
                     listener.onAllowClick(notifications[position])
                 }
             }
-
             rejectButton.setOnClickListener {
                 val position = adapterPosition
                 if (position != RecyclerView.NO_POSITION) {
@@ -48,7 +49,9 @@ class NotificationAdapter(
             }
         }
     }
+    /* ----------------------------- InboxViewHolder ----------------------------- */
 
+    /* ----------------------------- HistoryViewHolder ----------------------------- */
     inner class HistoryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val senderTextView: TextView = itemView.findViewById(R.id.tvNotificationSender)
         val emailTextView: TextView = itemView.findViewById(R.id.tvNotificationEmail)
@@ -64,11 +67,15 @@ class NotificationAdapter(
             }
         }
     }
+    /* ----------------------------- HistoryViewHolder ----------------------------- */
 
+    /* ----------------------------- getItemViewType ----------------------------- */
     override fun getItemViewType(position: Int): Int {
         return if (isInboxView) VIEW_TYPE_INBOX else VIEW_TYPE_HISTORY
     }
+    /* ----------------------------- getItemViewType ----------------------------- */
 
+    /* ----------------------------- onCreateViewHolder ----------------------------- */
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             VIEW_TYPE_INBOX -> {
@@ -83,10 +90,11 @@ class NotificationAdapter(
             }
         }
     }
+    /* ----------------------------- onCreateViewHolder ----------------------------- */
 
+    /* ----------------------------- onBindViewHolder ----------------------------- */
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val notification = notifications[position]
-
         when (holder) {
             is InboxViewHolder -> {
                 holder.senderTextView.text = notification.message
@@ -95,8 +103,6 @@ class NotificationAdapter(
             is HistoryViewHolder -> {
                 holder.senderTextView.text = notification.message
                 holder.emailTextView.text = notification.email
-
-                // Set status text and color
                 when (notification.status) {
                     NotificationStatus.ALLOWED -> {
                         holder.statusTextView.text = "Diizinkan"
@@ -113,11 +119,17 @@ class NotificationAdapter(
             }
         }
     }
+    /* ----------------------------- onBindViewHolder ----------------------------- */
 
+    /* ----------------------------- getItemCount ----------------------------- */
     override fun getItemCount() = notifications.size
+    /* ----------------------------- getItemCount ----------------------------- */
 
+    /* ----------------------------- updateNotifications ----------------------------- */
     fun updateNotifications(newNotifications: List<NotificationItem>) {
         notifications = newNotifications
         notifyDataSetChanged()
     }
+    /* ----------------------------- updateNotifications ----------------------------- */
 }
+/* ----------------------------- NotificationAdapter ----------------------------- */

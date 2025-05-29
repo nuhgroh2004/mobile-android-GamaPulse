@@ -15,8 +15,6 @@ class SparseScreenActivity : AppCompatActivity() {
     /* ----------------------------- Lifecycle Methods ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Check if user is already logged in
         if (isUserLoggedIn()) {
             navigateToMain()
             return

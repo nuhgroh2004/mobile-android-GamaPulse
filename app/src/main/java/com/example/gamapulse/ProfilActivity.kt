@@ -229,10 +229,8 @@ class ProfilActivity : AppCompatActivity() {
         binding.etEmail.setText(user.email)
         binding.etProgramStudy.setText(mahasiswa.prodi)
         binding.etNIM.setText(mahasiswa.NIM)
-
         val formattedDate = convertApiDateToDisplayFormat(mahasiswa.tanggal_lahir)
         binding.etDob.setText(formattedDate)
-
         mahasiswa.nomor_hp?.let {
             binding.etPhone.setText(it)
         }
@@ -245,20 +243,16 @@ class ProfilActivity : AppCompatActivity() {
         binding.etNIM.isEnabled = enabled
         binding.etDob.isEnabled = enabled
         binding.etPhone.isEnabled = enabled
-
         val visibility = if (enabled) View.VISIBLE else View.GONE
         binding.passwordLayout.visibility = visibility
         binding.btnSave.visibility = visibility
-
         if (enabled) {
             binding.etPassword.setText("********")
             binding.passwordLayout.hint = "Password"
             binding.passwordLayout.helperText = "Ketuk untuk mengganti password"
             binding.passwordLayout.endIconMode = TextInputLayout.END_ICON_CUSTOM
             binding.passwordLayout.setEndIconDrawable(R.drawable.ic_edit)
-
             binding.etPassword.setTextColor(ContextCompat.getColor(this, R.color.black))
-
             binding.passwordLayout.setEndIconOnClickListener {
                 binding.passwordLayout.endIconMode = TextInputLayout.END_ICON_PASSWORD_TOGGLE
                 binding.etPassword.setText("")
@@ -272,28 +266,16 @@ class ProfilActivity : AppCompatActivity() {
     /* ----------------------------- Setup UI Components ----------------------------- */
     private fun setupBackButton() {
         binding.btnBack.setOnClickListener {
-            // Disable multiple clicks
             it.isEnabled = false
-
-            // Use a cleaner animation sequence
             it.animate().alpha(0.5f).setDuration(50).withEndAction {
                 it.animate().alpha(1f).setDuration(50).start()
-
-                // First set the transition animation
                 overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
-
-                // Then finish the activity with no history
                 finish()
-
-                // Re-enable the button just in case
                 it.isEnabled = true
             }
         }
     }
-
-    // Handle system back button too
     override fun onBackPressed() {
-        // First set transition animation
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out)
         super.onBackPressed()
     }

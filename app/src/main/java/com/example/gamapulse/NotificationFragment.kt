@@ -34,13 +34,16 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private var isReturningFromProfile = false
     private lateinit var swipeRefreshLayout: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
+    /* ----------------------------- onCreateView ----------------------------- */
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.fragment_notification, container, false)
     }
+    /* ----------------------------- onCreateView ----------------------------- */
 
+    /* ----------------------------- onViewCreated ----------------------------- */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById(R.id.rvNotifications)
@@ -52,7 +55,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         setupSwipeRefresh()
         setupNotifications()
     }
+    /* ----------------------------- onViewCreated ----------------------------- */
 
+    /* ----------------------------- setupProfileButton ----------------------------- */
     private fun setupProfileButton(view: View) {
         val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
         profileButton.setOnClickListener {
@@ -63,7 +68,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             }
         }
     }
+    /* ----------------------------- setupProfileButton ----------------------------- */
 
+    /* ----------------------------- setupSwipeRefresh ----------------------------- */
     private fun setupSwipeRefresh() {
         swipeRefreshLayout.setOnRefreshListener {
             refreshNotificationsWithoutLoadingDialog()
@@ -74,7 +81,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             R.color.blue_500
         )
     }
+    /* ----------------------------- setupSwipeRefresh ----------------------------- */
 
+    /* ----------------------------- animateButtonAndExecute ----------------------------- */
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
         val originalElevation = view.elevation
         view.elevation = 0f
@@ -96,7 +105,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             }
             .start()
     }
+    /* ----------------------------- animateButtonAndExecute ----------------------------- */
 
+    /* ----------------------------- setupNotifications ----------------------------- */
     private fun setupNotifications() {
         loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
         loadingDialog.titleText = "Memuat notifikasi..."
@@ -104,7 +115,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         setupRecyclerView()
         fetchNotifications()
     }
+    /* ----------------------------- setupNotifications ----------------------------- */
 
+    /* ----------------------------- fetchNotifications ----------------------------- */
     private fun fetchNotifications() {
         try {
             if (!isAdded || context == null) return
@@ -187,7 +200,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error starting fetch", e)
         }
     }
+    /* ----------------------------- fetchNotifications ----------------------------- */
 
+    /* ----------------------------- showErrorDialog ----------------------------- */
     private fun showErrorDialog(message: String) {
         if (!isAdded || context == null) return
 
@@ -202,19 +217,21 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error showing dialog: ${e.message}", e)
         }
     }
+    /* ----------------------------- showErrorDialog ----------------------------- */
 
+    /* ----------------------------- refreshNotifications ----------------------------- */
     private fun refreshNotifications() {
         fetchNotifications()
     }
+    /* ----------------------------- refreshNotifications ----------------------------- */
 
+    /* ----------------------------- onResume ----------------------------- */
     override fun onResume() {
         super.onResume()
 
         try {
-            // Use different refresh approach when returning from profile
             if (isReturningFromProfile) {
                 isReturningFromProfile = false
-                // Add small delay to ensure smooth transition
                 view?.postDelayed({
                     if (isAdded && context != null) {
                         refreshNotificationsWithoutLoadingDialog()
@@ -229,7 +246,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error in onResume: ${e.message}", e)
         }
     }
+    /* ----------------------------- onResume ----------------------------- */
 
+    /* ----------------------------- refreshNotificationsWithoutLoadingDialog ----------------------------- */
     private fun refreshNotificationsWithoutLoadingDialog() {
         lifecycleScope.launch {
             try {
@@ -248,7 +267,6 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                 if (response.isSuccessful) {
                     val notificationResponse = response.body()
                     if (notificationResponse != null) {
-                        // Process notifications using the correct structure
                         inboxNotifications.clear()
                         historyNotifications.clear()
 
@@ -296,11 +314,17 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             }
         }
     }
+    /* ----------------------------- refreshNotificationsWithoutLoadingDialog ----------------------------- */
+
+    /* ----------------------------- updateBadgeCount ----------------------------- */
     private fun updateBadgeCount(count: Int) {
         if (activity is MainActivity) {
             (activity as MainActivity).updateNotificationBadge(count)
         }
     }
+    /* ----------------------------- updateBadgeCount ----------------------------- */
+
+    /* ----------------------------- setupTabs ----------------------------- */
     private fun setupTabs() {
         tabKotakMasuk.setOnClickListener {
             if (!isInboxActive) {
@@ -313,21 +337,27 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             }
         }
     }
+    /* ----------------------------- setupTabs ----------------------------- */
 
+    /* ----------------------------- switchToInbox ----------------------------- */
     private fun switchToInbox() {
         tabKotakMasuk.setBackgroundResource(R.drawable.report_selected_tab_background)
         tabRiwayat.setBackgroundResource(R.drawable.report_unselected_tab_background)
         recyclerView.adapter = inboxAdapter
         isInboxActive = true
     }
+    /* ----------------------------- switchToInbox ----------------------------- */
 
+    /* ----------------------------- switchToHistory ----------------------------- */
     private fun switchToHistory() {
         tabRiwayat.setBackgroundResource(R.drawable.report_selected_tab_background)
         tabKotakMasuk.setBackgroundResource(R.drawable.report_unselected_tab_background)
         recyclerView.adapter = historyAdapter
         isInboxActive = false
     }
+    /* ----------------------------- switchToHistory ----------------------------- */
 
+    /* ----------------------------- setupRecyclerView ----------------------------- */
     private fun setupRecyclerView() {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         inboxAdapter = NotificationAdapter(inboxNotifications, object : NotificationAdapter.NotificationActionListener {
@@ -365,7 +395,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         historyAdapter = NotificationAdapter(historyNotifications, this, false)
         recyclerView.adapter = inboxAdapter
     }
+    /* ----------------------------- setupRecyclerView ----------------------------- */
 
+    /* ----------------------------- showConfirmationDialog ----------------------------- */
     private fun showConfirmationDialog(
         title: String,
         message: String,
@@ -414,7 +446,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error showing dialog: ${e.message}", e)
         }
     }
+    /* ----------------------------- showConfirmationDialog ----------------------------- */
 
+    /* ----------------------------- showSuccessDialog ----------------------------- */
     private fun showSuccessDialog(message: String, onDismiss: (() -> Unit)? = null) {
         if (!isAdded || context == null) return
 
@@ -439,7 +473,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error showing success dialog: ${e.message}", e)
         }
     }
+    /* ----------------------------- showSuccessDialog ----------------------------- */
 
+    /* ----------------------------- processAllowNotification ----------------------------- */
     private fun processAllowNotification(notification: NotificationItem) {
         if (!isAdded || context == null) return
 
@@ -473,7 +509,6 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     }
 
                     if (response.isSuccessful) {
-                        // Show success dialog first
                         if (isAdded && context != null) {
                             val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
                                 .setTitle("Berhasil!")
@@ -484,10 +519,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                             successDialog.show()
                         }
 
-                        // Refresh all notifications from server
                         refreshNotificationsWithoutLoadingDialog()
-
-                        // Switch to history tab
                         switchToHistory()
                     } else {
                         val errorBody = response.errorBody()?.string()
@@ -506,7 +538,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error starting allow process: ${e.message}", e)
         }
     }
+    /* ----------------------------- processAllowNotification ----------------------------- */
 
+    /* ----------------------------- processRejectNotification ----------------------------- */
     private fun processRejectNotification(notification: NotificationItem) {
         if (!isAdded || context == null) return
 
@@ -540,7 +574,6 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     }
 
                     if (response.isSuccessful) {
-                        // Show success dialog first
                         if (isAdded && context != null) {
                             val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
                                 .setTitle("Berhasil!")
@@ -551,10 +584,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                             successDialog.show()
                         }
 
-                        // Refresh all notifications from server
                         refreshNotificationsWithoutLoadingDialog()
-
-                        // Switch to history tab
                         switchToHistory()
                     } else {
                         val errorBody = response.errorBody()?.string()
@@ -573,7 +603,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             Log.e("NotificationFragment", "Error starting reject process: ${e.message}", e)
         }
     }
+    /* ----------------------------- processRejectNotification ----------------------------- */
 
+    /* ----------------------------- processDeleteNotification ----------------------------- */
     private fun processDeleteNotification(notification: NotificationItem) {
         val index = historyNotifications.indexOfFirst { it.id == notification.id }
         if (index != -1) {
@@ -582,7 +614,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             showSuccessDialog("Notifikasi telah dihapus")
         }
     }
+    /* ----------------------------- processDeleteNotification ----------------------------- */
 
+    /* ----------------------------- onAllowClick ----------------------------- */
     override fun onAllowClick(notification: NotificationItem) {
         showConfirmationDialog(
             "Konfirmasi Izinkan",
@@ -593,7 +627,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             processAllowNotification(notification)
         }
     }
+    /* ----------------------------- onAllowClick ----------------------------- */
 
+    /* ----------------------------- onRejectClick ----------------------------- */
     override fun onRejectClick(notification: NotificationItem) {
         showConfirmationDialog(
             "Konfirmasi Tolak",
@@ -604,7 +640,9 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             processRejectNotification(notification)
         }
     }
+    /* ----------------------------- onRejectClick ----------------------------- */
 
+    /* ----------------------------- onDeleteClick ----------------------------- */
     override fun onDeleteClick(notification: NotificationItem) {
         showConfirmationDialog(
             "Konfirmasi Hapus",
@@ -615,4 +653,5 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
             processDeleteNotification(notification)
         }
     }
+    /* ----------------------------- onDeleteClick ----------------------------- */
 }
