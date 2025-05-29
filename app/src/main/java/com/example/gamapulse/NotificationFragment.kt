@@ -32,6 +32,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private var isInboxActive = true
     private lateinit var loadingDialog: SweetAlertDialog
     private var isReturningFromProfile = false
+    private lateinit var swipeRefreshLayout: androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -45,8 +46,10 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         recyclerView = view.findViewById(R.id.rvNotifications)
         tabKotakMasuk = view.findViewById(R.id.tab_kotak_masuk)
         tabRiwayat = view.findViewById(R.id.tab_riwayat)
+        swipeRefreshLayout = view.findViewById(R.id.swipeRefreshLayout)
         setupProfileButton(view)
         setupTabs()
+        setupSwipeRefresh()
         setupNotifications()
     }
 
@@ -59,6 +62,17 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                 startActivity(intent)
             }
         }
+    }
+
+    private fun setupSwipeRefresh() {
+        swipeRefreshLayout.setOnRefreshListener {
+            refreshNotificationsWithoutLoadingDialog()
+        }
+        swipeRefreshLayout.setColorSchemeResources(
+            R.color.purple_500,
+            R.color.teal_200,
+            R.color.blue_500
+        )
     }
 
     private fun animateButtonAndExecute(view: View, action: () -> Unit) {
@@ -155,6 +169,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                         historyNotifications.clear()
                         historyNotifications.addAll(history)
                         historyAdapter.updateNotifications(historyNotifications)
+                        updateBadgeCount(unreadNotifications.size)
                     } else {
                         val errorBody = response.errorBody()?.string()
                         Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
@@ -218,56 +233,74 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
     private fun refreshNotificationsWithoutLoadingDialog() {
         lifecycleScope.launch {
             try {
-                if (!isAdded || context == null) return@launch
-
                 val sharedPreferences = requireActivity().getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
-                val token = sharedPreferences.getString("token", null) ?: return@launch
+                val token = sharedPreferences.getString("token", null)
+
+                if (token == null) {
+                    swipeRefreshLayout.isRefreshing = false
+                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    return@launch
+                }
 
                 val response = ApiClient.apiService.getNotifications("Bearer $token")
+                swipeRefreshLayout.isRefreshing = false
+
                 if (response.isSuccessful) {
                     val notificationResponse = response.body()
-
-                    val inbox = notificationResponse?.unread_notifications?.map { notification ->
-                        NotificationItem(
-                            id = notification.notification_id,
-                            sender = notification.name,
-                            message = "${notification.name} ingin melihat laporan Anda",
-                            email = notification.email,
-                            status = NotificationStatus.PENDING
-                        )
-                    } ?: emptyList()
-
-                    val history = notificationResponse?.history_notifications?.map { notification ->
-                        val status = when (notification.request_status.lowercase()) {
-                            "accepted", "allowed" -> NotificationStatus.ALLOWED
-                            "rejected" -> NotificationStatus.REJECTED
-                            else -> NotificationStatus.PENDING
-                        }
-                        NotificationItem(
-                            id = notification.notification_id,
-                            sender = notification.name,
-                            message = "${notification.name} ingin melihat laporan Anda",
-                            email = notification.email,
-                            status = status
-                        )
-                    } ?: emptyList()
-
-                    if (isAdded && context != null) {
+                    if (notificationResponse != null) {
+                        // Process notifications using the correct structure
                         inboxNotifications.clear()
-                        inboxNotifications.addAll(inbox)
-                        inboxAdapter.updateNotifications(inbox)
-
                         historyNotifications.clear()
-                        historyNotifications.addAll(history)
-                        historyAdapter.updateNotifications(history)
+
+                        val unreadNotifications = notificationResponse.unread_notifications ?: emptyList()
+                        val historyNotifs = notificationResponse.history_notifications ?: emptyList()
+
+                        inboxNotifications.addAll(unreadNotifications.map { notification ->
+                            NotificationItem(
+                                id = notification.notification_id,
+                                sender = notification.name,
+                                message = "${notification.name} ingin melihat laporan Anda",
+                                email = notification.email,
+                                status = NotificationStatus.PENDING
+                            )
+                        })
+
+                        historyNotifications.addAll(historyNotifs.map { notification ->
+                            val status = when (notification.request_status.lowercase()) {
+                                "accepted", "allowed" -> NotificationStatus.ALLOWED
+                                "rejected" -> NotificationStatus.REJECTED
+                                else -> NotificationStatus.PENDING
+                            }
+                            NotificationItem(
+                                id = notification.notification_id,
+                                sender = notification.name,
+                                message = "${notification.name} ingin melihat laporan Anda",
+                                email = notification.email,
+                                status = status
+                            )
+                        })
+
+                        inboxAdapter.updateNotifications(inboxNotifications)
+                        historyAdapter.updateNotifications(historyNotifications)
+                        updateBadgeCount(unreadNotifications.size)
+                    } else {
+                        showErrorDialog("Gagal memuat notifikasi: Respons kosong")
                     }
+                } else {
+                    showErrorDialog("Error: ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e("NotificationFragment", "Silent refresh error: ${e.message}", e)
+                swipeRefreshLayout.isRefreshing = false
+                Log.e("NotificationFragment", "Error refreshing notifications", e)
+                showErrorDialog("Terjadi kesalahan: ${e.message}")
             }
         }
     }
-
+    private fun updateBadgeCount(count: Int) {
+        if (activity is MainActivity) {
+            (activity as MainActivity).updateNotificationBadge(count)
+        }
+    }
     private fun setupTabs() {
         tabKotakMasuk.setOnClickListener {
             if (!isInboxActive) {
@@ -440,25 +473,22 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     }
 
                     if (response.isSuccessful) {
-                        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-                        if (index != -1) {
-                            inboxNotifications.removeAt(index)
-                            inboxAdapter.updateNotifications(inboxNotifications)
-                            val updatedNotification = notification.copy(status = NotificationStatus.ALLOWED)
-                            historyNotifications.add(0, updatedNotification)
-                            historyAdapter.updateNotifications(historyNotifications)
-                            switchToHistory()
-
-                            if (isAdded && context != null) {
-                                val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                    .setTitle("Berhasil!")
-                                    .setMessage("Permintaan telah diizinkan")
-                                    .setPositiveButton("OK", null)
-                                    .setCancelable(true)
-                                    .create()
-                                successDialog.show()
-                            }
+                        // Show success dialog first
+                        if (isAdded && context != null) {
+                            val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle("Berhasil!")
+                                .setMessage("Permintaan telah diizinkan")
+                                .setPositiveButton("OK", null)
+                                .setCancelable(true)
+                                .create()
+                            successDialog.show()
                         }
+
+                        // Refresh all notifications from server
+                        refreshNotificationsWithoutLoadingDialog()
+
+                        // Switch to history tab
+                        switchToHistory()
                     } else {
                         val errorBody = response.errorBody()?.string()
                         Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")
@@ -510,25 +540,22 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
                     }
 
                     if (response.isSuccessful) {
-                        val index = inboxNotifications.indexOfFirst { it.id == notification.id }
-                        if (index != -1) {
-                            inboxNotifications.removeAt(index)
-                            inboxAdapter.updateNotifications(inboxNotifications)
-                            val updatedNotification = notification.copy(status = NotificationStatus.REJECTED)
-                            historyNotifications.add(0, updatedNotification)
-                            historyAdapter.updateNotifications(historyNotifications)
-                            switchToHistory()
-
-                            if (isAdded && context != null) {
-                                val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                                    .setTitle("Berhasil!")
-                                    .setMessage("Permintaan telah ditolak")
-                                    .setPositiveButton("OK", null)
-                                    .setCancelable(true)
-                                    .create()
-                                successDialog.show()
-                            }
+                        // Show success dialog first
+                        if (isAdded && context != null) {
+                            val successDialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle("Berhasil!")
+                                .setMessage("Permintaan telah ditolak")
+                                .setPositiveButton("OK", null)
+                                .setCancelable(true)
+                                .create()
+                            successDialog.show()
                         }
+
+                        // Refresh all notifications from server
+                        refreshNotificationsWithoutLoadingDialog()
+
+                        // Switch to history tab
+                        switchToHistory()
                     } else {
                         val errorBody = response.errorBody()?.string()
                         Log.e("NotificationFragment", "Error: ${response.code()} - $errorBody")

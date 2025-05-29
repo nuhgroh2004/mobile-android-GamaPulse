@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -68,6 +69,13 @@ class HomeFragment : Fragment() {
         return view
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        getAuthToken()
+        fetchUserProfile()
+        fetchNotifications()
+    }
+
     override fun onResume() {
         super.onResume()
         val sharedPref = requireActivity().getSharedPreferences(PREFS_NAME, AppCompatActivity.MODE_PRIVATE)
@@ -90,13 +98,13 @@ class HomeFragment : Fragment() {
             view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.GONE
             if (!lastMoodDate.isNullOrEmpty() && lastMoodDate != currentDate) {
                 with(sharedPref.edit()) {
-                    // Keep the old data for history, but mark that today needs a new entry
                     putString(KEY_LAST_MOOD_DATE, "")
                     apply()
                 }
             }
         }
         updateMoodDisplay(requireView())
+        fetchNotifications()
     }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
 
@@ -177,7 +185,6 @@ class HomeFragment : Fragment() {
 
     /* ----------------------------- Emoji Setup Methods ----------------------------- */
     private fun setupMoodEmojis(view: View) {
-        // Find each emoji container by position in the LinearLayout
         val moodContainer = view.findViewById<LinearLayout>(R.id.mood_container)
         val marahContainer = moodContainer.getChildAt(0) as LinearLayout
         val sedihContainer = moodContainer.getChildAt(1) as LinearLayout
@@ -200,7 +207,6 @@ class HomeFragment : Fragment() {
         setupEmojiClickListener(bahagiaEmoji, "Bahagia")
         setupEmojiClickListener(biasaEmoji, "Biasa")
     }
-
     private fun setupEmojiClickListener(emojiView: ImageView, moodType: String) {
         emojiView.setOnClickListener {
             animateEmoji(emojiView)
@@ -368,4 +374,29 @@ class HomeFragment : Fragment() {
         }
     }
     /* ----------------------------- End Profile Navigation ----------------------------- */
+
+    /* ----------------------------- Fetch Notifications ----------------------------- */
+    private fun fetchNotifications() {
+        if (authToken.isNullOrEmpty()) {
+            return
+        }
+        val bearerToken = "Bearer $authToken"
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.getNotifications(bearerToken)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val notificationResponse = response.body()!!
+                        val unreadCount = notificationResponse.unread_notifications?.size ?: 0
+                        if (activity is MainActivity) {
+                            (activity as MainActivity).updateNotificationBadge(unreadCount)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Failed to fetch notifications: ${e.message}", e)
+            }
+        }
+    }
+    /* ----------------------------- End Fetch Notifications ----------------------------- */
 }

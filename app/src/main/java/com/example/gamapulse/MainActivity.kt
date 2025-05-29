@@ -5,29 +5,30 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.google.android.material.badge.BadgeDrawable
 import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var bottomNavView: BottomNavigationView
+    private var notificationBadge: BadgeDrawable? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
-
-        val bottomNavView = findViewById<BottomNavigationView>(R.id.bottom_navigation)
-
-        // Always load HomeFragment first
+        bottomNavView = findViewById(R.id.bottom_navigation)
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, HomeFragment())
             .commit()
-
-        // Set selected item to home
         bottomNavView.selectedItemId = R.id.home
-
         bottomNavView.setOnNavigationItemSelectedListener { item ->
             val selectedFragment = when (item.itemId) {
                 R.id.home -> HomeFragment()
                 R.id.report -> ReportFragment()
-                R.id.notification -> NotificationFragment()
+                R.id.notification -> {
+                    // Clear badge when notifications are viewed
+                    clearNotificationBadge()
+                    NotificationFragment()
+                }
                 else -> HomeFragment()
             }
             supportFragmentManager.beginTransaction()
@@ -35,5 +36,23 @@ class MainActivity : AppCompatActivity() {
                 .commit()
             true
         }
+        setupNotificationBadge()
+    }
+    private fun setupNotificationBadge() {
+        notificationBadge = bottomNavView.getOrCreateBadge(R.id.notification)
+        notificationBadge?.isVisible = false
+    }
+    fun updateNotificationBadge(count: Int) {
+        if (count > 0) {
+            notificationBadge?.apply {
+                number = count
+                isVisible = true
+            }
+        } else {
+            clearNotificationBadge()
+        }
+    }
+    private fun clearNotificationBadge() {
+        notificationBadge?.isVisible = false
     }
 }
