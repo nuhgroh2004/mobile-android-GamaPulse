@@ -37,6 +37,7 @@ class ViewCalendarActivity : AppCompatActivity() {
     private lateinit var adapter: CalendarAdapter
     private val moodData = HashMap<String, String>()
 
+    /* ----------------------------- onCreate ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_view_calendar)
@@ -67,7 +68,9 @@ class ViewCalendarActivity : AppCompatActivity() {
         }
         setupSwipeRefresh()
     }
+    /* ----------------------------- onCreate ----------------------------- */
 
+    /* ----------------------------- setupSwipeRefresh ----------------------------- */
     private fun setupSwipeRefresh() {
         swipeRefreshLayout.setOnRefreshListener {
             fetchMoodDataForMonth(true)
@@ -78,7 +81,9 @@ class ViewCalendarActivity : AppCompatActivity() {
             R.color.blue_500
         )
     }
+    /* ----------------------------- setupSwipeRefresh ----------------------------- */
 
+    /* ----------------------------- initializeCalendar ----------------------------- */
     private fun initializeCalendar() {
         adapter = CalendarAdapter(this, calendar, moodData)
         calendarGrid.adapter = adapter
@@ -95,13 +100,18 @@ class ViewCalendarActivity : AppCompatActivity() {
         }
         updateCalendar()
     }
+    /* ----------------------------- initializeCalendar ----------------------------- */
 
+    /* ----------------------------- onResume ----------------------------- */
     override fun onResume() {
         super.onResume()
-        // Refresh data calendar saat activity menjadi visible kembali
+        moodData.clear()
+        adapter.notifyDataSetChanged()
         updateCalendar()
     }
+    /* ----------------------------- onResume ----------------------------- */
 
+    /* ----------------------------- fetchMoodDataForMonth ----------------------------- */
     private fun fetchMoodDataForMonth(isRefreshing: Boolean = false) {
         val month = calendar.get(Calendar.MONTH) + 1
         val year = calendar.get(Calendar.YEAR)
@@ -147,32 +157,47 @@ class ViewCalendarActivity : AppCompatActivity() {
             }
         }
     }
+    /* ----------------------------- fetchMoodDataForMonth ----------------------------- */
 
+    /* ----------------------------- processMoodData ----------------------------- */
     private fun processMoodData(apiMoodData: Map<String, MoodData>) {
         moodData.clear()
 
+        val currentDate = Calendar.getInstance()
+
         for ((day, moodData) in apiMoodData) {
-            val cal = calendar.clone() as Calendar
-            cal.set(Calendar.DAY_OF_MONTH, day.toInt())
+            try {
+                val dayInt = day.toInt()
+                val cal = calendar.clone() as Calendar
+                cal.set(Calendar.DAY_OF_MONTH, dayInt)
 
-            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val dateKey = dateFormat.format(cal.time)
+                if (cal.after(currentDate)) {
+                    continue
+                }
 
-            // We only need mood_level, ignore mood_note
-            val moodDrawableId = when (moodData.mood_level) {
-                1 -> R.drawable.icon_mood_marah
-                2 -> R.drawable.icon_mood_sedih
-                3 -> R.drawable.icon_mood_biasa
-                4 -> R.drawable.icon_mood_bahagia
-                else -> R.drawable.icon_mood_biasa
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                val dateKey = dateFormat.format(cal.time)
+
+                if (moodData.mood_level in 1..4) {
+                    val moodDrawableId = when (moodData.mood_level) {
+                        1 -> R.drawable.icon_mood_marah
+                        2 -> R.drawable.icon_mood_sedih
+                        3 -> R.drawable.icon_mood_biasa
+                        4 -> R.drawable.icon_mood_bahagia
+                        else -> continue
+                    }
+                    this.moodData[dateKey] = moodDrawableId.toString()
+                }
+            } catch (e: Exception) {
+                Log.e("ViewCalendarActivity", "Error processing mood for day $day", e)
             }
-
-            this.moodData[dateKey] = moodDrawableId.toString()
         }
 
         adapter.notifyDataSetChanged()
     }
+    /* ----------------------------- processMoodData ----------------------------- */
 
+    /* ----------------------------- showErrorDialog ----------------------------- */
     private fun showErrorDialog(message: String) {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Error")
@@ -180,28 +205,36 @@ class ViewCalendarActivity : AppCompatActivity() {
             .setPositiveButton("OK", null)
             .show()
     }
+    /* ----------------------------- showErrorDialog ----------------------------- */
 
+    /* ----------------------------- isInCurrentMonth ----------------------------- */
     private fun isInCurrentMonth(date: Date): Boolean {
         val cal1 = Calendar.getInstance().apply { time = date }
         val cal2 = calendar.clone() as Calendar
         return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
                 cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH)
     }
+    /* ----------------------------- isInCurrentMonth ----------------------------- */
 
+    /* ----------------------------- updateCalendar ----------------------------- */
     private fun updateCalendar() {
         val dateFormat = SimpleDateFormat("MMMM yyyy", Locale("id"))
         tvMonthYear.text = dateFormat.format(calendar.time)
         adapter.updateCalendar(calendar)
         fetchMoodDataForMonth()
     }
+    /* ----------------------------- updateCalendar ----------------------------- */
 
+    /* ----------------------------- openEditMoodActivity ----------------------------- */
     private fun openEditMoodActivity(date: Date) {
         val intent = Intent(this, EditMoodNotesActivity::class.java)
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         intent.putExtra("DATE", dateFormat.format(date))
         startActivity(intent)
     }
+    /* ----------------------------- openEditMoodActivity ----------------------------- */
 
+    /* ----------------------------- CalendarAdapter ----------------------------- */
     inner class CalendarAdapter(
         private val context: Context,
         private var currentCalendar: Calendar,
@@ -241,41 +274,47 @@ class ViewCalendarActivity : AppCompatActivity() {
         override fun getItem(position: Int): Any? = dates[position]
         override fun getItemId(position: Int): Long = position.toLong()
 
-        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val view = convertView ?: inflater.inflate(R.layout.item_calendar_day, parent, false)
-            val date = dates[position]
-            val tvDate: TextView = view.findViewById(R.id.tvDate)
-            val ivEmoji: ImageView = view.findViewById(R.id.tvEmoji)
+       override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+           val view = convertView ?: inflater.inflate(R.layout.item_calendar_day, parent, false)
+           val date = dates[position]
+           val tvDate: TextView = view.findViewById(R.id.tvDate)
+           val ivEmoji: ImageView = view.findViewById(R.id.tvEmoji)
 
-            if (date != null) {
-                val cal = Calendar.getInstance().apply { time = date }
-                tvDate.text = cal.get(Calendar.DAY_OF_MONTH).toString()
+           if (date != null) {
+               val cal = Calendar.getInstance().apply { time = date }
+               tvDate.text = cal.get(Calendar.DAY_OF_MONTH).toString()
 
-                if (cal.get(Calendar.MONTH) == currentCalendar.get(Calendar.MONTH)) {
-                    tvDate.setTextColor(context.getColor(android.R.color.black))
-                    val dateKey = dateFormat.format(date)
-                    if (moodData.containsKey(dateKey)) {
-                        val moodDrawableId = moodData[dateKey]?.toIntOrNull() ?: R.drawable.icon_mood_biasa
-                        ivEmoji.setImageResource(moodDrawableId)
-                        ivEmoji.visibility = View.VISIBLE
-                    } else {
-                        ivEmoji.visibility = View.INVISIBLE
-                    }
-                } else {
-                    tvDate.setTextColor(context.getColor(android.R.color.darker_gray))
-                    ivEmoji.visibility = View.INVISIBLE
-                }
+               if (cal.get(Calendar.MONTH) == currentCalendar.get(Calendar.MONTH)) {
+                   tvDate.setTextColor(context.getColor(android.R.color.black))
+                   val dateKey = dateFormat.format(date)
 
-                val today = Calendar.getInstance()
-                if (cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                    cal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
-                    cal.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH)) {
-                    view.setBackgroundResource(R.drawable.calendar_cell_today)
-                } else {
-                    view.setBackgroundResource(R.drawable.calendar_cell_background)
-                }
-            }
-            return view
-        }
+                   if (moodData.containsKey(dateKey)) {
+                       val moodDrawableId = moodData[dateKey]?.toIntOrNull()
+                       if (moodDrawableId != null) {
+                           ivEmoji.setImageResource(moodDrawableId)
+                           ivEmoji.visibility = View.VISIBLE
+                       } else {
+                           ivEmoji.visibility = View.INVISIBLE
+                       }
+                   } else {
+                       ivEmoji.visibility = View.INVISIBLE
+                   }
+               } else {
+                   tvDate.setTextColor(context.getColor(android.R.color.darker_gray))
+                   ivEmoji.visibility = View.INVISIBLE
+               }
+
+               val today = Calendar.getInstance()
+               if (cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                   cal.get(Calendar.MONTH) == today.get(Calendar.MONTH) &&
+                   cal.get(Calendar.DAY_OF_MONTH) == today.get(Calendar.DAY_OF_MONTH)) {
+                   view.setBackgroundResource(R.drawable.calendar_cell_today)
+               } else {
+                   view.setBackgroundResource(R.drawable.calendar_cell_background)
+               }
+           }
+           return view
+       }
     }
+    /* ----------------------------- CalendarAdapter ----------------------------- */
 }

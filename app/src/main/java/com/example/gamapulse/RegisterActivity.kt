@@ -22,6 +22,9 @@ import com.example.gamapulse.model.RegisterRequest
 import com.example.gamapulse.network.ApiClient
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
+import android.app.AlertDialog
+import android.widget.LinearLayout
+import android.view.Gravity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -154,32 +157,80 @@ class RegisterActivity : AppCompatActivity() {
             ""
         }
 
-        if (name.isEmpty() || email.isEmpty() || prodi.isEmpty() ||
-            tanggalLahir.isEmpty() || phoneNumber.isEmpty() ||
-            nim.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Semua kolom wajib diisi", Toast.LENGTH_SHORT).show()
-            return
+        // Run all validations
+        when {
+            !validateName(name) -> showValidationError("Nama harus diisi dan maksimal 255 karakter")
+            !validateEmail(email) -> showValidationError("Email harus menggunakan format @mail.ugm.ac.id yang valid")
+            !validateProdi(prodi) -> showValidationError("Program studi harus diisi dan maksimal 255 karakter")
+            !validateDOB(tanggalLahir) -> showValidationError("Tanggal lahir harus diisi dengan format yang valid")
+            !validatePhone(phoneNumber) -> showValidationError("Nomor telepon harus terdiri dari 10-12 digit angka")
+            !validateNIM(nim) -> showValidationError("Format NIM harus XX/XXXXXX/AA/XXXXX")
+            !validatePassword(password) -> showValidationError("Password minimal 8 karakter dan harus mengandung huruf dan angka")
+            else -> {
+                // All validations passed, proceed with registration
+                registerUser(name, email, prodi, tanggalLahir, phoneNumber, nim, password)
+            }
         }
+    }
 
-        if (!email.endsWith("@mail.ugm.ac.id") && !email.endsWith("@ugm.ac.id")) {
-            Toast.makeText(this, "Harap gunakan email UGM yang valid", Toast.LENGTH_SHORT).show()
-            return
-        }
+    private fun validateName(name: String): Boolean {
+        return name.isNotEmpty() && name.length <= 255
+    }
 
+    private fun validateEmail(email: String): Boolean {
+        val emailRegex = "^[a-zA-Z0-9._%+-]+@mail\\.ugm\\.ac\\.id$".toRegex()
+        return email.isNotEmpty() && email.length <= 255 && emailRegex.matches(email)
+    }
+
+    private fun validateProdi(prodi: String): Boolean {
+        return prodi.isNotEmpty() && prodi.length <= 255
+    }
+
+    private fun validateDOB(dob: String): Boolean {
+        return dob.isNotEmpty() && dob.matches("^\\d{4}-\\d{2}-\\d{2}$".toRegex())
+    }
+
+    private fun validatePhone(phone: String): Boolean {
+        val phoneRegex = "^[0-9]{10,12}$".toRegex()
+        return phone.isEmpty() || phoneRegex.matches(phone) // Phone is nullable
+    }
+
+    private fun validateNIM(nim: String): Boolean {
         val nimRegex = "^\\d{2}/\\d{6}/[A-Za-z]{2}/\\d{5}$".toRegex()
-        if (!nimRegex.matches(nim)) {
-            Toast.makeText(this, "Format NIM harus XX/XXXXXX/AA/XXXXX", Toast.LENGTH_SHORT).show()
-            return
-        }
+        return nim.isNotEmpty() && nim.length <= 20 && nimRegex.matches(nim)
+    }
 
-        // Tampilkan loading dialog
+    private fun validatePassword(password: String): Boolean {
+        val passwordRegex = "^(?=.*[A-Za-z])(?=.*\\d).{8,}$".toRegex()
+        return password.isNotEmpty() && passwordRegex.matches(password)
+    }
+
+    private fun showValidationError(message: String) {
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Validasi Gagal")
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .create()
+
+        dialog.show()
+
+        // Center the button
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).apply {
+            val parent = this.parent as? LinearLayout
+            parent?.gravity = Gravity.CENTER_HORIZONTAL
+        }
+    }
+
+    private fun registerUser(name: String, email: String, prodi: String, tanggalLahir: String,
+                             phoneNumber: String, nim: String, password: String) {
+        // Show loading dialog
         val loadingDialog = ProgressDialog(this).apply {
             setMessage("Mendaftarkan akun...")
             setCancelable(false)
             show()
         }
 
-        // Nonaktifkan tombol untuk mencegah klik berulang
+        // Disable register button to prevent multiple clicks
         btnRegister.isEnabled = false
 
         val registerRequest = RegisterRequest(
@@ -201,7 +252,6 @@ class RegisterActivity : AppCompatActivity() {
 
                     if (response.isSuccessful) {
                         val registerResponse = response.body()
-                        println("REGISTER SUCCESS: ${registerResponse?.message}")
                         if (registerResponse?.token != null) {
                             saveAuthToken(registerResponse.token)
                         }

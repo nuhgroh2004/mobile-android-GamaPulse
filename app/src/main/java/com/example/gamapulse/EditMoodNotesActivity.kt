@@ -372,4 +372,18 @@ class EditMoodNotesActivity : AppCompatActivity() {
         }
     }
     /* ----------------------------- End UI State Management ----------------------------- */
+
+    private fun isToday(day: Int, month: Int, year: Int): Boolean {
+        val calendar = Calendar.getInstance()
+        return (day == calendar.get(Calendar.DAY_OF_MONTH) &&
+                month == calendar.get(Calendar.MONTH) + 1 &&
+                year == calendar.get(Calendar.YEAR))
+    }
+    private fun showPastDateDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Tidak Dapat Mengedit")
+            .setMessage("Anda tidak dapat mengedit mood selain hari ini.")
+            .setPositiveButton("OK", null)
+            .show()
+    }
 }

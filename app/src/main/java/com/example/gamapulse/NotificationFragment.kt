@@ -54,7 +54,7 @@ class NotificationFragment : Fragment(), NotificationAdapter.NotificationActionL
         val profileButton = view.findViewById<ImageView>(R.id.btn_profil)
         profileButton.setOnClickListener {
             animateButtonAndExecute(it) {
-                isReturningFromProfile = true // Set flag before navigating
+                isReturningFromProfile = true
                 val intent = Intent(requireContext(), ProfilActivity::class.java)
                 startActivity(intent)
             }
