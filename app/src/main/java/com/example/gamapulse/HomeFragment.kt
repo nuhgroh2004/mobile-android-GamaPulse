@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.gamapulse.network.ApiClient
 import com.github.mikephil.charting.BuildConfig
 import kotlinx.coroutines.CoroutineScope
@@ -117,18 +118,31 @@ class HomeFragment : Fragment() {
         if (authToken.isNullOrEmpty()) {
             return
         }
+        val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Memuat profil..."
+        loadingDialog.setCancelable(false)
+        loadingDialog.show()
         val bearerToken = "Bearer $authToken"
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = ApiClient.apiService.getProfile(bearerToken)
                 withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
                     if (response.isSuccessful && response.body() != null) {
                         val profileData = response.body()!!
+                        usernameLayout.alpha = 0f
+                        usernameLayout.visibility = View.VISIBLE
                         usernameLayout.text = "HALO ${profileData.user.name}"
+                        usernameLayout.animate()
+                            .alpha(1f)
+                            .setDuration(300)
+                            .start()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
+
                     Toast.makeText(requireContext(), "Gagal memuat profil: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }

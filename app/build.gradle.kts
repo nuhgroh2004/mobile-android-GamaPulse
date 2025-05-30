@@ -54,6 +54,7 @@ dependencies {
     implementation(libs.google.material)
     implementation("androidx.cardview:cardview:1.0.0")
     implementation ("com.github.f0ris.sweetalert:library:1.5.6")
+    implementation ("com.github.f0ris.sweetalert:library:1.6.2")
     // untuk ReportFragment
     implementation ("com.github.PhilJay:MPAndroidChart:v3.1.0")
     testImplementation ("junit:junit:4.13.2")
