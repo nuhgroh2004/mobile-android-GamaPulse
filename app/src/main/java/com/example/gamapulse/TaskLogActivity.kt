@@ -1,13 +1,16 @@
 package com.example.gamapulse
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.content.res.ColorStateList
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
 import cn.pedant.SweetAlert.SweetAlertDialog
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
@@ -36,6 +39,8 @@ class TaskLogActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var targetTimeInSeconds = 0L
     private var elapsedTimeInSeconds = 0L
+    private var taskLogService: TaskLogService? = null
+    private var bound = false
 
     /* ----------------------------- onCreate ----------------------------- */
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,6 +57,9 @@ class TaskLogActivity : AppCompatActivity() {
                 v.paddingBottom + systemBars.bottom
             )
             insets
+        }
+        Intent(this, TaskLogService::class.java).also { intent ->
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
         setupTimePickers()
         setupButtonAnimations()
@@ -224,34 +232,35 @@ class TaskLogActivity : AppCompatActivity() {
             startTimer()
             binding.btnStartPause.text = "Jeda"
             binding.btnStartPause.backgroundTintList = ColorStateList.valueOf(resources.getColor(R.color.orange, theme))
+            binding.btnCreateTarget.visibility = View.GONE
+            binding.timePickerContainer.visibility = View.GONE
+            binding.btnAddTarget.visibility = View.GONE
         }
     }
     /* ----------------------------- toggleTimer ----------------------------- */
 
     /* ----------------------------- startTimer ----------------------------- */
     private fun startTimer() {
-        if (startTime == 0L) {
-            startTime = SystemClock.elapsedRealtime()
-        } else {
-            startTime = SystemClock.elapsedRealtime() - elapsedTime
-        }
         isTimerRunning = true
-        handler.post(object : Runnable {
-            override fun run() {
-                if (isTimerRunning) {
-                    elapsedTime = SystemClock.elapsedRealtime() - startTime
-                    elapsedTimeInSeconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
-                    updateTimerDisplay(elapsedTime)
-                    handler.postDelayed(this, 1000)
-                }
+        Intent(this, TaskLogService::class.java).also { intent ->
+            if (startTime == 0L) {
+                intent.action = TaskLogService.ACTION_START
+                intent.putExtra(TaskLogService.EXTRA_TARGET_TIME, targetTimeInSeconds)
+            } else {
+                intent.action = TaskLogService.ACTION_RESUME
             }
-        })
+            startService(intent)
+        }
     }
     /* ----------------------------- startTimer ----------------------------- */
 
     /* ----------------------------- pauseTimer ----------------------------- */
     private fun pauseTimer() {
         isTimerRunning = false
+        Intent(this, TaskLogService::class.java).also { intent ->
+            intent.action = TaskLogService.ACTION_PAUSE
+            startService(intent)
+        }
     }
     /* ----------------------------- pauseTimer ----------------------------- */
 
@@ -319,6 +328,10 @@ class TaskLogActivity : AppCompatActivity() {
     private fun finishTask() {
         if (isTimerRunning) {
             pauseTimer()
+            Intent(this, TaskLogService::class.java).also { intent ->
+                intent.action = TaskLogService.ACTION_STOP
+                startService(intent)
+            }
         }
         val isTargetAchieved = elapsedTimeInSeconds >= targetTimeInSeconds
         saveTimerProgress(
@@ -421,6 +434,51 @@ class TaskLogActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        if (bound) {
+            unbindService(serviceConnection)
+            bound = false
+        }
     }
     /* ----------------------------- onDestroy ----------------------------- */
+
+    /* ----------------------------- stopwatchRunBackround ----------------------------- */
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as TaskLogService.LocalBinder
+            taskLogService = binder.getService()
+            bound = true
+            taskLogService?.onTick = { time ->
+                runOnUiThread {
+                    elapsedTime = time
+                    elapsedTimeInSeconds = TimeUnit.MILLISECONDS.toSeconds(time)
+                    updateTimerDisplay(time)
+                }
+            }
+            if (taskLogService?.isRunning() == true) {
+                isTimerRunning = true
+                elapsedTime = taskLogService?.getElapsedTime() ?: 0L
+                elapsedTimeInSeconds = TimeUnit.MILLISECONDS.toSeconds(elapsedTime)
+                targetTimeInSeconds = taskLogService?.getTargetTime() ?: 0L
+                binding.btnCreateTarget.visibility = View.GONE
+                binding.timePickerContainer.visibility = View.GONE
+                binding.btnAddTarget.visibility = View.GONE
+                if (targetTimeInSeconds > 0) {
+                    val hours = TimeUnit.SECONDS.toHours(targetTimeInSeconds)
+                    val minutes = TimeUnit.SECONDS.toMinutes(targetTimeInSeconds) % 60
+                    val seconds = targetTimeInSeconds % 60
+                    val formattedTime = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                    displayCurrentTarget(formattedTime)
+                }
+                binding.llTimerControls.visibility = View.VISIBLE
+                binding.btnStartPause.text = "Jeda"
+                binding.btnStartPause.backgroundTintList = ColorStateList.valueOf(resources.getColor(R.color.orange, theme))
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            taskLogService = null
+            bound = false
+        }
+    }
+    /* ----------------------------- stopwatchRunBackround ----------------------------- */
 }
