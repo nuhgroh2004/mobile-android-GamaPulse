@@ -23,8 +23,11 @@ import com.example.gamapulse.network.ApiClient
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import android.app.AlertDialog
+import android.util.Log
 import android.widget.LinearLayout
 import android.view.Gravity
+import com.example.gamapulse.model.ErrorResponse
+import com.example.gamapulse.model.ErrorFields
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -230,7 +233,6 @@ class RegisterActivity : AppCompatActivity() {
             parent?.gravity = Gravity.CENTER_HORIZONTAL
         }
     }
-
     private fun registerUser(name: String, email: String, prodi: String, tanggalLahir: String,
                              phoneNumber: String, nim: String, password: String) {
         val loadingDialog = ProgressDialog(this).apply {
@@ -263,23 +265,99 @@ class RegisterActivity : AppCompatActivity() {
                             "Pendaftaran berhasil", Toast.LENGTH_SHORT).show()
                         navigateToMainActivity()
                     } else {
-                        val errorMsg = try {
-                            response.errorBody()?.string() ?: "Kesalahan tidak diketahui"
+                        try {
+                            val errorBody = response.errorBody()?.string()
+                            Log.e("RegisterActivity", "Error body: $errorBody")
+                            Log.e("RegisterActivity", "Status code: ${response.code()}")
+                            if (errorBody != null) {
+                                try {
+                                    val gson = com.google.gson.Gson()
+                                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                                    if (errorResponse.errors != null) {
+                                        handleValidationErrors(errorResponse.errors)
+                                    } else {
+                                        if (errorBody.contains("email", ignoreCase = true) &&
+                                            errorBody.contains("taken", ignoreCase = true)) {
+                                            etEmailUgm.error = "Email sudah digunakan"
+                                            etEmailUgm.requestFocus()
+                                            showValidationError("Email sudah terdaftar di sistem")
+                                        } else if (errorBody.contains("nim", ignoreCase = true) &&
+                                                  errorBody.contains("taken", ignoreCase = true)) {
+                                            etNIM.error = "NIM sudah digunakan"
+                                            etNIM.requestFocus()
+                                            showValidationError("NIM sudah terdaftar di sistem")
+                                        } else {
+                                            showValidationError("Pendaftaran gagal: ${response.message() ?: "Server error"}")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    if (errorBody.contains("email", ignoreCase = true) ||
+                                        errorBody.contains("nim", ignoreCase = true)) {
+                                        showValidationError("Email atau NIM sudah terdaftar di sistem")
+                                    } else {
+                                        showValidationError("Pendaftaran gagal: Server error")
+                                    }
+                                    Log.e("RegisterActivity", "Error parsing error response", e)
+                                }
+                            } else {
+                                Toast.makeText(
+                                    this@RegisterActivity,
+                                    "Pendaftaran gagal: ${response.message() ?: "Unknown error"}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         } catch (e: Exception) {
-                            "Error: ${response.code()}"
+                            Log.e("RegisterActivity", "Exception during error handling", e)
+                            Toast.makeText(
+                                this@RegisterActivity,
+                                "Error: ${e.message ?: "Unknown error"}",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
-                        Toast.makeText(this@RegisterActivity,
-                            "Pendaftaran gagal: $errorMsg", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     loadingDialog.dismiss()
                     btnRegister.isEnabled = true
-                    Toast.makeText(this@RegisterActivity,
-                        "Kesalahan: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@RegisterActivity,
+                        "Kesalahan: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
+        }
+    }
+    private fun buildErrorMessage(errors: ErrorFields): String {
+        val errorBuilder = StringBuilder("Pendaftaran gagal:\n\n")
+        errors.email?.firstOrNull()?.let {
+            errorBuilder.append("• ").append(it).append("\n")
+        }
+        errors.nim?.firstOrNull()?.let {
+            errorBuilder.append("• ").append(it).append("\n")
+        }
+        return errorBuilder.toString().trim()
+    }
+    private fun handleValidationErrors(errors: ErrorFields) {
+        var hasError = false
+        errors.email?.firstOrNull()?.let { emailError ->
+            etEmailUgm.error = emailError
+            etEmailUgm.requestFocus()
+            hasError = true
+        }
+        errors.nim?.firstOrNull()?.let { nimError ->
+            if (!hasError) { // Only focus NIM if no previous error
+                etNIM.error = nimError
+                etNIM.requestFocus()
+            } else {
+                etNIM.error = nimError
+            }
+            hasError = true
+        }
+        if (hasError) {
+            val errorMessage = buildErrorMessage(errors)
+            showValidationError(errorMessage)
         }
     }
     /* ----------------------------- End Registration Process ----------------------------- */

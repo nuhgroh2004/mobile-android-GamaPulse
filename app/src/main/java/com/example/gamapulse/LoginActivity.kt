@@ -200,6 +200,11 @@ class LoginActivity : AppCompatActivity() {
             etEmail.requestFocus()
             return
         }
+        if (!email.endsWith("@mail.ugm.ac.id")) {
+            etEmail.error = "Hanya email dengan domain @mail.ugm.ac.id yang diperbolehkan"
+            etEmail.requestFocus()
+            return
+        }
         if (password.isEmpty()) {
             etPassword.error = "Password tidak boleh kosong"
             etPassword.requestFocus()
