@@ -407,7 +407,6 @@ class TaskLogActivity : AppCompatActivity() {
                     SweetAlertDialog(this@TaskLogActivity, SweetAlertDialog.SUCCESS_TYPE)
                         .setTitleText("Berhasil!")
                         .setContentText("Progress berhasil disimpan")
-                        .setConfirmClickListener { it.dismissWithAnimation() }
                         .show()
                 } else {
                     val errorBody = response.errorBody()?.string()

@@ -18,6 +18,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.gamapulse.model.MoodData
 import com.example.gamapulse.network.ApiClient
 import kotlinx.coroutines.launch
@@ -119,10 +120,13 @@ class ViewCalendarActivity : AppCompatActivity() {
     private fun fetchMoodDataForMonth(isRefreshing: Boolean = false) {
         val month = calendar.get(Calendar.MONTH) + 1
         val year = calendar.get(Calendar.YEAR)
-
-        if (!isRefreshing) {
-            loadingProgressBar.visibility = View.VISIBLE
-        }
+        val loadingDialog = if (!isRefreshing) {
+            val dialog = SweetAlertDialog(this, SweetAlertDialog.PROGRESS_TYPE)
+            dialog.titleText = "Memuat data kalender..."
+            dialog.setCancelable(false)
+            dialog.show()
+            dialog
+        } else null
 
         lifecycleScope.launch {
             try {
@@ -130,9 +134,9 @@ class ViewCalendarActivity : AppCompatActivity() {
                 val token = sharedPreferences.getString("token", null)
 
                 if (token == null) {
-                    loadingProgressBar.visibility = View.GONE
+                    loadingDialog?.dismissWithAnimation()
                     swipeRefreshLayout.isRefreshing = false
-                    showErrorDialog("Token autentikasi tidak ditemukan")
+                    showErrorDialog("Token autentikasi tidak ditemukan. Silahkan kembali dan coba lagi.")
                     return@launch
                 }
 
@@ -142,7 +146,7 @@ class ViewCalendarActivity : AppCompatActivity() {
                     year
                 )
 
-                loadingProgressBar.visibility = View.GONE
+                loadingDialog?.dismissWithAnimation()
                 swipeRefreshLayout.isRefreshing = false
 
                 if (response.isSuccessful) {
@@ -151,16 +155,33 @@ class ViewCalendarActivity : AppCompatActivity() {
                     }
                 } else {
                     Log.e("ViewCalendarActivity", "Error: ${response.code()} - ${response.message()}")
-                    showErrorDialog("Gagal memuat data: ${response.message()}")
+                    showErrorDialog("Gagal memuat data. Silahkan kembali dan coba lagi.")
                 }
             } catch (e: Exception) {
-                loadingProgressBar.visibility = View.GONE
+                loadingDialog?.dismissWithAnimation()
                 swipeRefreshLayout.isRefreshing = false
                 Log.e("ViewCalendarActivity", "Exception: ${e.message}", e)
-                showErrorDialog("Terjadi kesalahan: ${e.message}")
+                showErrorDialog("Gagal memuat data. Silahkan kembali dan coba lagi.")
             }
         }
     }
+    /* ----------------------------- fetchMoodDataForMonth ----------------------------- */
+
+    /* ----------------------------- showErrorDialog ----------------------------- */
+    private fun showErrorDialog(message: String) {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Terjadi Kesalahan")
+            .setMessage(message)
+            .setPositiveButton("Coba Lagi") { _, _ ->
+                fetchMoodDataForMonth()
+            }
+            .setNegativeButton("Kembali") { _, _ ->
+                finish()
+            }
+            .setCancelable(false)
+            .show()
+    }
+    /* ----------------------------- showErrorDialog ----------------------------- */
     /* ----------------------------- fetchMoodDataForMonth ----------------------------- */
 
     /* ----------------------------- processMoodData ----------------------------- */
@@ -200,16 +221,6 @@ class ViewCalendarActivity : AppCompatActivity() {
         adapter.notifyDataSetChanged()
     }
     /* ----------------------------- processMoodData ----------------------------- */
-
-    /* ----------------------------- showErrorDialog ----------------------------- */
-    private fun showErrorDialog(message: String) {
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Error")
-            .setMessage(message)
-            .setPositiveButton("OK", null)
-            .show()
-    }
-    /* ----------------------------- showErrorDialog ----------------------------- */
 
     /* ----------------------------- isInCurrentMonth ----------------------------- */
     private fun isInCurrentMonth(date: Date): Boolean {
@@ -277,21 +288,17 @@ class ViewCalendarActivity : AppCompatActivity() {
         override fun getCount(): Int = dates.size
         override fun getItem(position: Int): Any? = dates[position]
         override fun getItemId(position: Int): Long = position.toLong()
-
        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
            val view = convertView ?: inflater.inflate(R.layout.item_calendar_day, parent, false)
            val date = dates[position]
            val tvDate: TextView = view.findViewById(R.id.tvDate)
            val ivEmoji: ImageView = view.findViewById(R.id.tvEmoji)
-
            if (date != null) {
                val cal = Calendar.getInstance().apply { time = date }
                tvDate.text = cal.get(Calendar.DAY_OF_MONTH).toString()
-
                if (cal.get(Calendar.MONTH) == currentCalendar.get(Calendar.MONTH)) {
                    tvDate.setTextColor(context.getColor(android.R.color.black))
                    val dateKey = dateFormat.format(date)
-
                    if (moodData.containsKey(dateKey)) {
                        val moodDrawableId = moodData[dateKey]?.toIntOrNull()
                        if (moodDrawableId != null) {

@@ -3,6 +3,7 @@ package com.example.gamapulse.network
 import com.example.gamapulse.model.CalendarResponse
 import com.example.gamapulse.model.LoginRequest
 import com.example.gamapulse.model.LoginResponse
+import com.example.gamapulse.model.MahasiswaRoleResponse
 import com.example.gamapulse.model.MoodNotesRequest
 import com.example.gamapulse.model.MoodNotesResponse
 import com.example.gamapulse.model.NotificationActionRequest
@@ -57,6 +58,12 @@ interface ApiService {
     suspend fun getNotifications(
         @Header("Authorization") token: String
     ): Response<NotificationResponse>
+
+    @GET("api/dosen/roles")
+    suspend fun getMahasiswaRole(
+        @Header("Authorization") token: String,
+        @Query("mahasiswa_id") mahasiswaId: Int
+    ): Response<MahasiswaRoleResponse>
 
     @PUT("api/mahasiswa/notifikasi/{id}")
     suspend fun respondToNotification(

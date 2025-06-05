@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment
 import cn.pedant.SweetAlert.SweetAlertDialog
 import com.example.gamapulse.network.ApiClient
 import com.github.mikephil.charting.BuildConfig
+import com.example.gamapulse.model.MahasiswaRoleResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,6 +47,9 @@ class HomeFragment : Fragment() {
     private var moodSelectionContainer: LinearLayout? = null
     private var moodParentContainer: LinearLayout? = null
     private var devRefreshButton: Button? = null
+    private var mahasiswaId: Int = 0
+    private var minIntensity: Int = 1
+    private var maxIntensity: Int = 5
 
 
     /* ----------------------------- Fragment Lifecycle Methods ----------------------------- */
@@ -137,8 +141,11 @@ class HomeFragment : Fragment() {
                             .alpha(1f)
                             .setDuration(300)
                             .start()
+                        mahasiswaId = profileData.mahasiswa.mahasiswa_id
+                        fetchMahasiswaRole(bearerToken, mahasiswaId)
                     }
                 }
+
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     loadingDialog.dismissWithAnimation()
@@ -301,18 +308,19 @@ class HomeFragment : Fragment() {
         val cancelButton = popupView.findViewById<Button>(R.id.cancel_button)
         val okButton = popupView.findViewById<Button>(R.id.ok_button)
         titleTextView.text = "Seberapa $moodType kamu?"
-        var currentValue = 1
+        var currentValue = minIntensity
+        numberPickerValue.text = currentValue.toString()
         numberPickerValue.text = currentValue.toString()
         cancelButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
         okButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
         increaseButton.setOnClickListener {
-            if (currentValue < 5) {
+            if (currentValue < maxIntensity) {
                 currentValue++
                 numberPickerValue.text = currentValue.toString()
             }
         }
         decreaseButton.setOnClickListener {
-            if (currentValue > 1) {
+            if (currentValue > minIntensity) {
                 currentValue--
                 numberPickerValue.text = currentValue.toString()
             }
@@ -413,4 +421,26 @@ class HomeFragment : Fragment() {
         }
     }
     /* ----------------------------- End Fetch Notifications ----------------------------- */
+
+    /* ----------------------------- Fetch Mahasiswa Role ----------------------------- */
+    private fun fetchMahasiswaRole(token: String, id: Int) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.getMahasiswaRole(token, id)
+                withContext(Dispatchers.Main) {
+                    if (response.isSuccessful && response.body() != null) {
+                        val roleData = response.body()!!
+                        minIntensity = roleData.role.min_intensity
+                        maxIntensity = roleData.role.max_intensity
+                        Log.d("HomeFragment", "Intensity range: $minIntensity-$maxIntensity")
+                    } else {
+                        Log.e("HomeFragment", "Failed to get role data: ${response.code()}")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("HomeFragment", "Error fetching role: ${e.message}", e)
+            }
+        }
+    }
+    /* ----------------------------- End Fetch Mahasiswa Role ----------------------------- */
 }
