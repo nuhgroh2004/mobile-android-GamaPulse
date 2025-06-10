@@ -32,6 +32,9 @@ import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.*
+import java.lang.reflect.Array.set
+import java.util.Calendar
 
 class HomeFragment : Fragment() {
     private val PREFS_NAME = "MoodPrefs"
@@ -50,7 +53,7 @@ class HomeFragment : Fragment() {
     private var mahasiswaId: Int = 0
     private var minIntensity: Int = 1
     private var maxIntensity: Int = 5
-
+    private var midnightRefreshJob: Job? = null
 
     /* ----------------------------- Fragment Lifecycle Methods ----------------------------- */
     override fun onCreateView(
@@ -58,11 +61,17 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
+
+        // Initialize views
         moodParentContainer = view.findViewById<LinearLayout>(R.id.mood_container)?.parent as? LinearLayout
         moodSelectionContainer = view.findViewById(R.id.mood_container)
         devRefreshButton = view.findViewById(R.id.dev_refresh_button)
         usernameLayout = view.findViewById(R.id.usernameLayout)
+
+        // Set initial visibility for current mood card
         view.findViewById<View>(R.id.current_mood_card).visibility = View.GONE
+
+        // Fetch data and setup UI
         getAuthToken()
         fetchUserProfile()
         setupMoodEmojis(view)
@@ -71,6 +80,16 @@ class HomeFragment : Fragment() {
         setupDevRefreshButton()
         checkMoodSelectionStatus()
         updateMoodDisplay(view)
+
+        // Start countdown when current mood card becomes visible
+        val currentMoodCard = view.findViewById<View>(R.id.current_mood_card)
+        currentMoodCard.viewTreeObserver.addOnGlobalLayoutListener {
+            if (currentMoodCard.visibility == View.VISIBLE) {
+                Log.d("HomeFragment", "current_mood_card is visible. Starting countdown.")
+                startCountdownToRefresh()
+            }
+        }
+
         return view
     }
 
@@ -112,6 +131,40 @@ class HomeFragment : Fragment() {
         fetchNotifications()
     }
     /* ----------------------------- End Fragment Lifecycle Methods ----------------------------- */
+
+    /* ----------------------------- Fungsi refres 24 jam  ----------------------------- */
+    private fun startCountdownToRefresh() {
+        if (devRefreshButton == null) {
+            Log.e("HomeFragment", "devRefreshButton is null. Countdown cannot proceed.")
+            return
+        }
+        midnightRefreshJob?.cancel()
+        midnightRefreshJob = CoroutineScope(Dispatchers.Main).launch {
+            while (isActive) {
+                val currentTime = Calendar.getInstance()
+                val targetTime = Calendar.getInstance().apply {
+                    if (get(Calendar.HOUR_OF_DAY) != 0 || get(Calendar.MINUTE) != 0) {
+                        add(Calendar.DAY_OF_YEAR, 1)
+                    }
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                val delayMs = targetTime.timeInMillis - currentTime.timeInMillis
+                Log.d("HomeFragment", "Scheduled refresh at midnight. Waiting for ${delayMs/1000} seconds")
+                delay(delayMs)
+                Log.d("HomeFragment", "Midnight reached. Simulating button press.")
+                devRefreshButton?.performClick()
+                delay(1000)
+            }
+        }
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        midnightRefreshJob?.cancel()
+    }
+    /* ----------------------------- End Fungsi refres 24 jam  ----------------------------- */
 
     /* ----------------------------- GET Username login ----------------------------- */
     private fun getAuthToken() {
@@ -444,4 +497,6 @@ class HomeFragment : Fragment() {
         }
     }
     /* ----------------------------- End Fetch Mahasiswa Role ----------------------------- */
+
+
 }
