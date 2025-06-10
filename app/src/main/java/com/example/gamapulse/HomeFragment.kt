@@ -313,6 +313,7 @@ class HomeFragment : Fragment() {
         numberPickerValue.text = currentValue.toString()
         cancelButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
         okButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
+        titleTextView.text = "Seberapa $moodType kamu?\ndari ($minIntensity - $maxIntensity)"
         increaseButton.setOnClickListener {
             if (currentValue < maxIntensity) {
                 currentValue++
