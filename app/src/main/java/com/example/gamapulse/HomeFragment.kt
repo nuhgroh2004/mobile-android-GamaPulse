@@ -98,6 +98,7 @@ class HomeFragment : Fragment() {
         getAuthToken()
         fetchUserProfile()
         fetchNotifications()
+        checkTodayMood()
     }
 
     override fun onResume() {
@@ -498,5 +499,72 @@ class HomeFragment : Fragment() {
     }
     /* ----------------------------- End Fetch Mahasiswa Role ----------------------------- */
 
+    /* ---------------------------- cek tampilan mood tracker ----------------------------- */
+    private fun checkTodayMood() {
+        if (authToken.isNullOrEmpty()) {
+            return
+        }
+        val calendar = Calendar.getInstance()
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+        val month = calendar.get(Calendar.MONTH) + 1
+        val year = calendar.get(Calendar.YEAR)
+        val bearerToken = "Bearer $authToken"
+        val loadingDialog = SweetAlertDialog(requireContext(), SweetAlertDialog.PROGRESS_TYPE)
+        loadingDialog.titleText = "Memeriksa data mood..."
+        loadingDialog.setCancelable(false)
+        loadingDialog.show()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val response = ApiClient.apiService.getMoodNotes(bearerToken, day, month, year)
+                withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
+                    if (response.isSuccessful && response.body() != null) {
+                        val moodData = response.body()!!
+                        if (moodData.mood != null) {
+                            moodSelectionContainer?.visibility = View.GONE
+                            moodParentContainer?.visibility = View.GONE
+                            view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.VISIBLE
+                            val moodType = when(moodData.mood.mood_level) {
+                                1 -> "Marah"
+                                2 -> "Sedih"
+                                3 -> "Biasa"
+                                4 -> "Bahagia"
+                                else -> "Biasa"
+                            }
+                            val moodIntensity = moodData.mood.mood_intensity
+                            val moodNote = moodData.mood.mood_note ?: ""
+                            val sharedPref = requireActivity().getSharedPreferences(PREFS_NAME, AppCompatActivity.MODE_PRIVATE)
+                            with(sharedPref.edit()) {
+                                putString(KEY_LAST_MOOD_DATE, getCurrentDate())
+                                putString(KEY_LAST_MOOD_TYPE, moodType)
+                                putInt(KEY_LAST_MOOD_INTENSITY, moodIntensity)
+                                putString(KEY_LAST_MOOD_NOTE, moodNote)
+                                apply()
+                            }
+                            updateMoodDisplay(requireView())
+                        } else {
+                            moodSelectionContainer?.visibility = View.VISIBLE
+                            moodParentContainer?.visibility = View.VISIBLE
+                            view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.GONE
+                        }
+                    } else {
+                        moodSelectionContainer?.visibility = View.VISIBLE
+                        moodParentContainer?.visibility = View.VISIBLE
+                        view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.GONE
+                        Log.e("HomeFragment", "API Error: ${response.code()} - ${response.message()}")
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    loadingDialog.dismissWithAnimation()
+                    moodSelectionContainer?.visibility = View.VISIBLE
+                    moodParentContainer?.visibility = View.VISIBLE
+                    view?.findViewById<View>(R.id.current_mood_card)?.visibility = View.GONE
+                    Log.e("HomeFragment", "Error checking today's mood: ${e.message}")
+                }
+            }
+        }
+    }
+    /* ----------------------------- End cek tampilan mood tracker ----------------------------- */
 
 }

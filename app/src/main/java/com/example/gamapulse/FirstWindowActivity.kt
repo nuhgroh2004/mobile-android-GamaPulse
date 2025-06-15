@@ -2,6 +2,7 @@ package com.example.gamapulse
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -113,7 +114,15 @@ class FirstWindowActivity : AppCompatActivity() {
         }
         animatorSet.addListener(object : android.animation.AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: android.animation.Animator) {
-                val intent = Intent(this@FirstWindowActivity, SparseScreenActivity::class.java)
+                val sharedPreferences = getSharedPreferences("AuthPrefs", Context.MODE_PRIVATE)
+                val token = sharedPreferences.getString("token", null)
+
+                val intent = if (!token.isNullOrEmpty()) {
+                    Intent(this@FirstWindowActivity, MainActivity::class.java)
+                } else {
+                    Intent(this@FirstWindowActivity, SparseScreenActivity::class.java)
+                }
+
                 startActivity(intent)
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                 finish()
