@@ -61,7 +61,7 @@ Silakan hubungi tim pengembang kami. Sistem ini **sepenuhnya menggunakan REST AP
 
 Klik untuk mengunduh:
 
-👉 [GamaPulse Android APK](GamaPulse.apk)
+👉 [GamaPulse Android APK, klik View raw untuk mendownolad](GamaPulse.apk)
 
 ---
 
@@ -75,8 +75,8 @@ Klik untuk mengunduh:
 
 ## 🔗 Akses Sistem
 
-🌐 Web App: [https://gamapulse.com](103.126.226.54)  
-📱 Android APK: [Klik untuk Unduh](GamaPulse.apk)
+🌐 Web App: [http://gamapulse.com](http://103.126.226.54/)  
+📱 Android APK: [Klik View raw untuk mendownolad](GamaPulse.apk)
 
 ---
 
