@@ -35,6 +35,12 @@ import java.util.Locale
 import kotlinx.coroutines.*
 import java.lang.reflect.Array.set
 import java.util.Calendar
+import android.text.SpannableStringBuilder
+import android.text.Spannable
+import android.text.style.RelativeSizeSpan
+import android.text.style.StyleSpan
+import android.text.style.AbsoluteSizeSpan
+import android.graphics.Typeface
 
 class HomeFragment : Fragment() {
     private val PREFS_NAME = "MoodPrefs"
@@ -61,17 +67,11 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
-
-        // Initialize views
         moodParentContainer = view.findViewById<LinearLayout>(R.id.mood_container)?.parent as? LinearLayout
         moodSelectionContainer = view.findViewById(R.id.mood_container)
         devRefreshButton = view.findViewById(R.id.dev_refresh_button)
         usernameLayout = view.findViewById(R.id.usernameLayout)
-
-        // Set initial visibility for current mood card
         view.findViewById<View>(R.id.current_mood_card).visibility = View.GONE
-
-        // Fetch data and setup UI
         getAuthToken()
         fetchUserProfile()
         setupMoodEmojis(view)
@@ -80,8 +80,6 @@ class HomeFragment : Fragment() {
         setupDevRefreshButton()
         checkMoodSelectionStatus()
         updateMoodDisplay(view)
-
-        // Start countdown when current mood card becomes visible
         val currentMoodCard = view.findViewById<View>(R.id.current_mood_card)
         currentMoodCard.viewTreeObserver.addOnGlobalLayoutListener {
             if (currentMoodCard.visibility == View.VISIBLE) {
@@ -361,13 +359,28 @@ class HomeFragment : Fragment() {
         val decreaseButton = popupView.findViewById<View>(R.id.decrease_button)
         val cancelButton = popupView.findViewById<Button>(R.id.cancel_button)
         val okButton = popupView.findViewById<Button>(R.id.ok_button)
-        titleTextView.text = "Seberapa $moodType kamu?"
+
+        val mainText = "Seberapa $moodType kamu?\n"
+        val explanationText = "$minIntensity = Sedikit $moodType\n$maxIntensity = Sangat $moodType"
+
+        val fullText = SpannableStringBuilder().apply {
+            append(mainText)
+            append(explanationText)
+            setSpan(
+                AbsoluteSizeSpan(8, true),
+                mainText.length,
+                mainText.length + explanationText.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        titleTextView.text = fullText
+
         var currentValue = minIntensity
-        numberPickerValue.text = currentValue.toString()
         numberPickerValue.text = currentValue.toString()
         cancelButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
         okButton.foreground = getRippleDrawable(requireContext().getColor(R.color.teal))
-        titleTextView.text = "Seberapa $moodType kamu?\ndari ($minIntensity - $maxIntensity)"
+        titleTextView.text = "Seberapa $moodType kamu?\n $minIntensity = Sedikit $moodType, $maxIntensity = Sangat $moodType"
         increaseButton.setOnClickListener {
             if (currentValue < maxIntensity) {
                 currentValue++
