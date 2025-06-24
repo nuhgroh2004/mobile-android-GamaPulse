@@ -25,6 +25,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
+import com.example.gamapulse.TaskLogService.Companion.ACTION_START
 import com.example.gamapulse.databinding.ActivityTaskLogBinding
 import com.example.gamapulse.model.StoreProgressRequest
 import com.example.gamapulse.network.ApiClient
@@ -172,6 +173,8 @@ class TaskLogActivity : AppCompatActivity() {
             showAlert("Target waktu tidak boleh 0")
             return
         }
+        resetTimer()
+        taskLogService?.resetTimer()
         targetTimeInSeconds = (hours * 3600 + minutes * 60 + seconds).toLong()
         val formattedTime = String.format("%02d:%02d:%02d", hours, minutes, seconds)
         binding.timePickerContainer.visibility = View.GONE
@@ -479,5 +482,6 @@ class TaskLogActivity : AppCompatActivity() {
             bound = false
         }
     }
+
     /* ----------------------------- stopwatchRunBackround ----------------------------- */
 }

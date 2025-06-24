@@ -60,6 +60,13 @@ class TaskLogService : Service() {
         }
     }
 
+    // Tambahkan fungsi reset di TaskLogService
+    fun resetTimer() {
+        startTime = 0L
+        elapsedTime = 0L
+        isTimerRunning = false
+    }
+
     private fun startForegroundService() {
         createNotificationChannel()
 
@@ -103,8 +110,9 @@ class TaskLogService : Service() {
 
     private fun startTimer(targetSeconds: Long) {
         targetTimeInSeconds = targetSeconds
-        if (startTime == 0L) {
+        if (startTime == 0L || elapsedTime > 0) {
             startTime = SystemClock.elapsedRealtime()
+            elapsedTime = 0L
         } else {
             startTime = SystemClock.elapsedRealtime() - elapsedTime
         }
